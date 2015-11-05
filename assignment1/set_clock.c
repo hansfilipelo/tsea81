@@ -29,7 +29,7 @@ int Hours, Minutes, Seconds;
 void init_clock(void)
 {
     /* set starting time */ 
-    Hours = 23; 
+    Hours = 12; 
     Minutes = 59; 
     Seconds = 30; 
 
@@ -54,9 +54,9 @@ void increment_time(void)
         {
             Minutes = 0; 
             Hours++; 
-            if (Hours > 23)
+            if (Hours > 12)
             {
-                Hours = 0; 
+                Hours = 1; 
             }
         }
     }
@@ -120,7 +120,7 @@ void time_from_set_message(char message[], int *hours, int *minutes, int *second
 /* time_ok: returns nonzero if hours, minutes and seconds represents a valid time */ 
 int time_ok(int hours, int minutes, int seconds)
 {
-    return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && 
+    return hours >= 1 && hours <= 12 && minutes >= 0 && minutes <= 59 && 
         seconds >= 0 && seconds <= 59; 
 }
 
@@ -163,7 +163,7 @@ void *clock_thread(void *unused)
         increment_time(); 
 
         /* wait one second */ 
-        usleep(1000000);
+        usleep(500000);
     }
 }
 
