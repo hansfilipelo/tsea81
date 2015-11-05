@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <semaphore.h>
 
 #include "si_ui.h"
 
@@ -21,6 +22,8 @@
 
 
 /* common variables */
+// Mutex
+pthread_mutex_t Mutex;
 
 /* integer number to be displayed */
 int Number;
@@ -47,7 +50,9 @@ void long_calculation(void)
    inc_value to Number, and updates Even_Number */ 
 void increment_number(int inc_value) 
 {
+  pthread_mutex_lock(&Mutex);
     Number += inc_value;
+    long_calculation();
 
     if (Number % 2 == 0) 
     {
@@ -57,12 +62,14 @@ void increment_number(int inc_value)
     {
         Even_Number = 0;
     }
+    pthread_mutex_unlock(&Mutex);  
 }
 
 /* decrement_number: decrements Number with dec_value, 
    and updates Even_Number */
 void decrement_number(int dec_value) 
 {
+    pthread_mutex_lock(&Mutex);
     Number -= dec_value;
     if (Number % 2 == 0) 
     {
@@ -72,11 +79,13 @@ void decrement_number(int dec_value)
     {
         Even_Number = 0;
     }
+    pthread_mutex_unlock(&Mutex);
 }
 
 /* set_number: sets Number and updates Even_Number */
 void set_number(int new_number) 
 {
+  pthread_mutex_lock(&Mutex);
     Number = new_number;
     if (Number % 2 == 0) 
     {
@@ -86,6 +95,7 @@ void set_number(int new_number)
     {
         Even_Number = 0;
     }
+    pthread_mutex_unlock(&Mutex);
 }
 
 /* get_number: gets the value of Number, together with the 
@@ -93,8 +103,10 @@ void set_number(int new_number)
 void get_number(
     int *number_value, int *even_number_value) 
 {
+  pthread_mutex_lock(&Mutex);
     *number_value = Number;
     *even_number_value = Even_Number;
+    pthread_mutex_unlock(&Mutex);
 }
 
 
@@ -246,6 +258,9 @@ int main(void)
 {
     /* initialise UI channel */ 
     si_ui_init(); 
+
+    /* initialize Mutex */
+    pthread_mutex_init(&Mutex, NULL);
 
     /* create threads */ 
 
