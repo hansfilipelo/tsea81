@@ -147,12 +147,12 @@ void *clock_thread(void *unused)
 /* time_from_set_message: extract time from set message from user interface */
 void time_from_set_message(char message[], int *hours, int *minutes, int *seconds)
 {
-  sscanf(message,"set:%d:%d:%d",hours, minutes, seconds);
+  sscanf(message,"set %d %d %d",hours, minutes, seconds);
 }
 /* time_ok: returns nonzero if hours, minutes and seconds represents a valid time */
 int time_ok(int hours, int minutes, int seconds)
 {
-  return hours >= 1 && hours <= 12 && minutes >= 0 && minutes <= 59 &&
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 &&
   seconds >= 0 && seconds <= 59;
 }
 
