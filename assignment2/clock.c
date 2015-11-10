@@ -188,17 +188,18 @@ int clock_get_alarm_status(){
   pthread_mutex_lock(&Clock.mutex);
 
   if (Clock.alarm_enabled == 0){
+    pthread_mutex_unlock(&Clock.mutex);
     return 0;
   }
   else if(Clock.alarm_enabled == 1){
+    pthread_mutex_unlock(&Clock.mutex);
     return 1;
   }
-  else{
-      si_ui_show_error("Alarm enable in undefined state.");
-      Clock.alarm_enabled = 0;
-      return 0;
-  }
+
+  si_ui_show_error("Alarm enable in undefined state.");
+  Clock.alarm_enabled = 0;
   pthread_mutex_unlock(&Clock.mutex);
+  return 0;
 }
 
 // ----------
@@ -275,7 +276,7 @@ void * read_from_gui_thread(void *unused)
 	/* check if it is an alarm set message */
 	else if (strncmp(message, "alarm", 3) == 0)
         {
-	  time_from_alarm_message(message, &hours, &minutes, &seconds);
+	          time_from_alarm_message(message, &hours, &minutes, &seconds);
             if (time_ok(hours, minutes, seconds))
             {
 	             clock_set_alarm_time(hours, minutes, seconds);
