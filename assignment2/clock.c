@@ -139,7 +139,7 @@ void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
 
 void *clock_thread(void *unused)
 {
-
+  int delay = 1500*1000*1000; //1s in ns
   /* time for next update */
   struct timespec ts;
   /* initialise time for next update */
@@ -219,7 +219,7 @@ int clock_get_alarm_status(){
 
 void *clock_alarm_thread(void *unused)
 {
-
+  int delay = 1500*1000*1000; //1,5s in ns
   while (1) {
     sem_wait(&Clock.start_alarm);
 
@@ -233,8 +233,8 @@ void *clock_alarm_thread(void *unused)
 
       /* compute time for next update */
       ts.tv_nsec += delay;
-      if(ts.tv_nsec >= 1500*1000*1000){
-        ts.tv_nsec -= 1500*1000*1000;
+      if(ts.tv_nsec >= 1000*1000*1000){
+        ts.tv_nsec -= 1000*1000*1000;
         ts.tv_sec++;
       }
       /* wait until time for next update */
