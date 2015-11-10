@@ -219,6 +219,17 @@ void *clock_alarm_thread(void *unused)
 }
 
 // ---------
+// Resets Alarm
+
+void clock_reset_alarm(){
+  pthread_mutex_lock(&Clock.mutex);
+  Clock.alarm_enabled = 0;
+  pthread_mutex_unlock(&Clock.mutex);
+
+  sem_post(&Clock.start_alarm);
+}
+
+// ---------
 // Helper functions
 
 /* time_from_set_message: extract time from set message from user interface */
@@ -274,7 +285,7 @@ void * read_from_gui_thread(void *unused)
             }
         }
 	/* check if it is an alarm set message */
-	else if (strncmp(message, "alarm", 3) == 0)
+	     else if (strncmp(message, "alarm", 5) == 0)
         {
 	          time_from_alarm_message(message, &hours, &minutes, &seconds);
             if (time_ok(hours, minutes, seconds))
@@ -285,6 +296,9 @@ void * read_from_gui_thread(void *unused)
             {
                 si_ui_show_error("Illegal value for hours, minutes or seconds");
             }
+        }
+        else if (strcmp(message, "reset") == 0){
+          clock_reset_alarm();
         }
         /* check if it is an exit message */
         else if (strcmp(message, "exit") == 0)
