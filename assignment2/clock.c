@@ -172,6 +172,8 @@ int clock_get_alarm_status(){
   }
   else{
       si_ui_show_error("Alarm enable in undefined state.");
+      Clock.alarm_enabled = 0;
+      return 0;
   }
   pthread_mutex_unlock(&Clock.mutex);
 }
