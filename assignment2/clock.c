@@ -5,9 +5,9 @@
 
 typedef struct
 {
-    int hours;
-    int minutes;
-    int seconds;
+  int hours;
+  int minutes;
+  int seconds;
 } time_data_type;
 
 // ---------
@@ -15,18 +15,18 @@ typedef struct
 
 typedef struct
 {
-    /* the current time */
-    time_data_type time;
-    /* alarm time */
-    time_data_type alarm_time;
-    /* alarm enabled flag */
-    int alarm_enabled;
+  /* the current time */
+  time_data_type time;
+  /* alarm time */
+  time_data_type alarm_time;
+  /* alarm enabled flag */
+  int alarm_enabled;
 
-    /* semaphore for mutual exclusion */
-    pthread_mutex_t mutex;
+  /* semaphore for mutual exclusion */
+  pthread_mutex_t mutex;
 
-    /* semaphore for alarm activation */
-    sem_t start_alarm;
+  /* semaphore for alarm activation */
+  sem_t start_alarm;
 
 } clock_data_type;
 
@@ -40,22 +40,22 @@ static clock_data_type Clock;
 
 void clock_init(void)
 {
-    /* initialise time and alarm time */
+  /* initialise time and alarm time */
 
-    Clock.time.hours = 0;
-    Clock.time.minutes = 0;
-    Clock.time.seconds = 0;
+  Clock.time.hours = 0;
+  Clock.time.minutes = 0;
+  Clock.time.seconds = 0;
 
-    Clock.alarm_time.hours = 0;
-    Clock.alarm_time.minutes = 0;
-    Clock.alarm_time.seconds = 0;
+  Clock.alarm_time.hours = 0;
+  Clock.alarm_time.minutes = 0;
+  Clock.alarm_time.seconds = 0;
 
-    /* alarm is not enabled */
-    Clock.alarm_enabled = 0;
+  /* alarm is not enabled */
+  Clock.alarm_enabled = 0;
 
-    /* initialise semaphores */
-    pthread_mutex_init(&Clock.mutex, NULL);
-    sem_init(&Clock.start_alarm, 0, 0);
+  /* initialise semaphores */
+  pthread_mutex_init(&Clock.mutex, NULL);
+  sem_init(&Clock.start_alarm, 0, 0);
 }
 
 // ---------
@@ -63,43 +63,43 @@ void clock_init(void)
 
 void clock_set_time(int hours, int minutes, int seconds)
 {
-    pthread_mutex_lock(&Clock.mutex);
+  pthread_mutex_lock(&Clock.mutex);
 
-    Clock.time.hours = hours;
-    Clock.time.minutes = minutes;
-    Clock.time.seconds = seconds;
+  Clock.time.hours = hours;
+  Clock.time.minutes = minutes;
+  Clock.time.seconds = seconds;
 
-    pthread_mutex_unlock(&Clock.mutex);
+  pthread_mutex_unlock(&Clock.mutex);
 }
 
 // --------
 /* increment_time: increments the current time with
-   one second */
+one second */
 
 void clock_increment_time(void)
 {
-    /* reserve clock variables */
-    pthread_mutex_lock(&Clock.mutex);
+  /* reserve clock variables */
+  pthread_mutex_lock(&Clock.mutex);
 
-    /* increment time */
-    Clock.time.seconds++;
-    if (Clock.time.seconds > 59)
+  /* increment time */
+  Clock.time.seconds++;
+  if (Clock.time.seconds > 59)
+  {
+    Clock.time.seconds = 0;
+    Clock.time.minutes++;
+    if (Clock.time.minutes > 59)
     {
-        Clock.time.seconds = 0;
-        Clock.time.minutes++;
-        if (Clock.time.minutes > 59)
-        {
-            Clock.time.minutes = 0;
-            Clock.time.hours++;
-            if (Clock.time.hours > 23)
-            {
-                Clock.time.hours = 0;
-            }
-        }
+      Clock.time.minutes = 0;
+      Clock.time.hours++;
+      if (Clock.time.hours > 23)
+      {
+        Clock.time.hours = 0;
+      }
     }
+  }
 
-    /* release clock variables */
-    pthread_mutex_unlock(&Clock.mutex);
+  /* release clock variables */
+  pthread_mutex_unlock(&Clock.mutex);
 }
 
 // ----------
@@ -107,16 +107,16 @@ void clock_increment_time(void)
 
 void clock_get_time(int *hours, int *minutes, int *seconds)
 {
-    /* reserve clock variables */
-    pthread_mutex_lock(&Clock.mutex);
+  /* reserve clock variables */
+  pthread_mutex_lock(&Clock.mutex);
 
-    /* read values */
-    *hours = Clock.time.hours;
-    *minutes = Clock.time.minutes;
-    *seconds = Clock.time.seconds;
+  /* read values */
+  *hours = Clock.time.hours;
+  *minutes = Clock.time.minutes;
+  *seconds = Clock.time.seconds;
 
-    /* release clock variables */
-    pthread_mutex_unlock(&Clock.mutex);
+  /* release clock variables */
+  pthread_mutex_unlock(&Clock.mutex);
 }
 
 // ------
@@ -139,44 +139,56 @@ void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
 
 void *clock_thread(void *unused)
 {
-    /* local copies of the current time */
-    int hours, minutes, seconds;
-    int alarmHours, alarmMinutes, alarmSeconds;
 
-    /* infinite loop */
-    while (1)
-    {
-        /* read and display current time */
-        clock_get_time(&hours, &minutes, &seconds);
-        clock_get_alarm_time(&alarmHours,&alarmMinutes,&alarmSeconds);
-        display_time(hours, minutes, seconds);
+  /* time for next update */
+  struct timespec ts;
+  /* initialise time for next update */
+  clock_gettime(CLOCK_MONOTONIC, &ts);
 
-        /* increment time */
-        clock_increment_time();
+  /* local copies of the current time */
+  int hours, minutes, seconds;
+  int alarmHours, alarmMinutes, alarmSeconds;
 
-        if (alarmHours == hours && alarmMinutes == minutes && alarmSeconds == seconds && Clock.alarm_enabled == 1) {
-          sem_post(&Clock.start_alarm);
-        }
+  /* infinite loop */
+  while (1)
+  {
+    /* read and display current time */
+    clock_get_time(&hours, &minutes, &seconds);
+    clock_get_alarm_time(&alarmHours,&alarmMinutes,&alarmSeconds);
+    display_time(hours, minutes, seconds);
 
-        /* wait one second */
-        usleep(1000000);
+    /* increment time */
+    clock_increment_time();
+
+    if (alarmHours == hours && alarmMinutes == minutes && alarmSeconds == seconds && Clock.alarm_enabled == 1) {
+      sem_post(&Clock.start_alarm);
     }
+
+    /* compute time for next update */
+    ts.tv_nsec += delay;
+    if(ts.tv_nsec >= 1000*1000*1000){
+      ts.tv_nsec -= 1000*1000*1000;
+      ts.tv_sec++;
+    }
+    /* wait until time for next update */
+    clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
+  }
 }
 
 // -----------
 
 void clock_set_alarm_time(int hours, int minutes, int seconds){
 
-   pthread_mutex_lock(&Clock.mutex);
+  pthread_mutex_lock(&Clock.mutex);
 
-    Clock.alarm_time.hours = hours;
-    Clock.alarm_time.minutes = minutes;
-    Clock.alarm_time.seconds = seconds;
-    Clock.alarm_enabled = 1;
+  Clock.alarm_time.hours = hours;
+  Clock.alarm_time.minutes = minutes;
+  Clock.alarm_time.seconds = seconds;
+  Clock.alarm_enabled = 1;
 
-    pthread_mutex_unlock(&Clock.mutex);
+  pthread_mutex_unlock(&Clock.mutex);
 
-    display_alarm_time(hours, minutes, seconds);
+  display_alarm_time(hours, minutes, seconds);
 
 }
 
@@ -212,8 +224,21 @@ void *clock_alarm_thread(void *unused)
     sem_wait(&Clock.start_alarm);
 
     while (clock_get_alarm_status() == 1) {
+      /* time for next update */
+      struct timespec ts;
+      /* initialise time for next update */
+      clock_gettime(CLOCK_MONOTONIC, &ts);
+
       display_alarm_text();
-      usleep(1500000);
+
+      /* compute time for next update */
+      ts.tv_nsec += delay;
+      if(ts.tv_nsec >= 1500*1000*1000){
+        ts.tv_nsec -= 1500*1000*1000;
+        ts.tv_sec++;
+      }
+      /* wait until time for next update */
+      clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
     }
   }
 }
@@ -255,64 +280,64 @@ int time_ok(int hours, int minutes, int seconds)
 
 // ---
 /* set_task: reads messages from the user interface, and
-   sets the clock, or exits the program */
+sets the clock, or exits the program */
 
 
 void * read_from_gui_thread(void *unused)
 {
-    /* message array */
-    char message[SI_UI_MAX_MESSAGE_SIZE];
+  /* message array */
+  char message[SI_UI_MAX_MESSAGE_SIZE];
 
-    /* time read from user interface */
-    int hours, minutes, seconds;
+  /* time read from user interface */
+  int hours, minutes, seconds;
 
-    /* set GUI size */
-    si_ui_set_size(400, 200);
+  /* set GUI size */
+  si_ui_set_size(400, 200);
 
-    while(1)
+  while(1)
+  {
+    /* read a message */
+    si_ui_receive(message);
+    /* check if it is a set message */
+    if (strncmp(message, "set", 3) == 0)
     {
-        /* read a message */
-        si_ui_receive(message);
-        /* check if it is a set message */
-        if (strncmp(message, "set", 3) == 0)
-        {
-            time_from_set_message(message, &hours, &minutes, &seconds);
-            if (time_ok(hours, minutes, seconds))
-            {
-                clock_set_time(hours, minutes, seconds);
-            }
-            else
-            {
-                si_ui_show_error("Illegal value for hours, minutes or seconds");
-            }
-        }
-	/* check if it is an alarm set message */
-	     else if (strncmp(message, "alarm", 5) == 0)
-        {
-	          time_from_alarm_message(message, &hours, &minutes, &seconds);
-            if (time_ok(hours, minutes, seconds))
-            {
-	             clock_set_alarm_time(hours, minutes, seconds);
-            }
-            else
-            {
-                si_ui_show_error("Illegal value for hours, minutes or seconds");
-            }
-        }
-        else if (strcmp(message, "reset") == 0){
-          clock_reset_alarm();
-        }
-        /* check if it is an exit message */
-        else if (strcmp(message, "exit") == 0)
-        {
-            exit(0);
-        }
-        /* not a legal message */
-        else
-        {
-            si_ui_show_error("unexpected message type");
-        }
+      time_from_set_message(message, &hours, &minutes, &seconds);
+      if (time_ok(hours, minutes, seconds))
+      {
+        clock_set_time(hours, minutes, seconds);
+      }
+      else
+      {
+        si_ui_show_error("Illegal value for hours, minutes or seconds");
+      }
     }
+    /* check if it is an alarm set message */
+    else if (strncmp(message, "alarm", 5) == 0)
+    {
+      time_from_alarm_message(message, &hours, &minutes, &seconds);
+      if (time_ok(hours, minutes, seconds))
+      {
+        clock_set_alarm_time(hours, minutes, seconds);
+      }
+      else
+      {
+        si_ui_show_error("Illegal value for hours, minutes or seconds");
+      }
+    }
+    else if (strcmp(message, "reset") == 0){
+      clock_reset_alarm();
+    }
+    /* check if it is an exit message */
+    else if (strcmp(message, "exit") == 0)
+    {
+      exit(0);
+    }
+    /* not a legal message */
+    else
+    {
+      si_ui_show_error("unexpected message type");
+    }
+  }
 }
 
 // ----------
@@ -320,24 +345,24 @@ void * read_from_gui_thread(void *unused)
 
 int main(void)
 {
-    /* initialise UI channel */
-    si_ui_init();
+  /* initialise UI channel */
+  si_ui_init();
 
-    /* initialise variables */
-    clock_init();
+  /* initialise variables */
+  clock_init();
 
-    /* create tasks */
-    pthread_t clock_thread_handle;
-    pthread_t read_from_gui_thread_handle;
-    pthread_t clock_alarm_thread_handle;
+  /* create tasks */
+  pthread_t clock_thread_handle;
+  pthread_t read_from_gui_thread_handle;
+  pthread_t clock_alarm_thread_handle;
 
-    pthread_create(&clock_thread_handle, NULL, clock_thread, 0);
-    pthread_create(&read_from_gui_thread_handle, NULL, read_from_gui_thread, 0);
-    pthread_create(&clock_alarm_thread_handle, NULL, clock_alarm_thread, 0);
+  pthread_create(&clock_thread_handle, NULL, clock_thread, 0);
+  pthread_create(&read_from_gui_thread_handle, NULL, read_from_gui_thread, 0);
+  pthread_create(&clock_alarm_thread_handle, NULL, clock_alarm_thread, 0);
 
-    pthread_join(clock_thread_handle, NULL);
-    pthread_join(read_from_gui_thread_handle, NULL);
-    pthread_join(clock_alarm_thread_handle, NULL);
-    /* will never be here! */
-    return 0;
+  pthread_join(clock_thread_handle, NULL);
+  pthread_join(read_from_gui_thread_handle, NULL);
+  pthread_join(clock_alarm_thread_handle, NULL);
+  /* will never be here! */
+  return 0;
 }
