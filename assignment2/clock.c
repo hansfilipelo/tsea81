@@ -71,3 +71,157 @@ void clock_set_time(int hours, int minutes, int seconds)
 
     pthread_mutex_unlock(&Clock.mutex);
 }
+
+// --------
+/* increment_time: increments the current time with
+   one second */
+
+void clock_increment_time(void)
+{
+    /* reserve clock variables */
+    pthread_mutex_lock(&Clock.mutex);
+
+    /* increment time */
+    Clock.time.seconds++;
+    if (Clock.time.seconds > 59)
+    {
+        Clock.time.seconds = 0;
+        Clock.time.minutes++;
+        if (Clock.time.minutes > 59)
+        {
+            Clock.time.minutes = 0;
+            Clock.time.hours++;
+            if (Clock.time.hours > 23)
+            {
+                Clock.time.hours = 0;
+            }
+        }
+    }
+
+    /* release clock variables */
+    pthread_mutex_unlock(&Clock.mutex);
+}
+
+// ----------
+/* get_time: read time from common clock variables */
+
+void clock_get_time(int *hours, int *minutes, int *seconds)
+{
+    /* reserve clock variables */
+    pthread_mutex_lock(&Clock.mutex);
+
+    /* read values */
+    *hours = Clock.time.hours;
+    *minutes = Clock.time.minutes;
+    *seconds = Clock.time.seconds;
+
+    /* release clock variables */
+    pthread_mutex_unlock(&Clock.mutex);
+}
+
+// ----------
+/* clock_task: clock task */
+
+void *clock_thread(void *unused)
+{
+    /* local copies of the current time */
+    int hours, minutes, seconds;
+
+    /* infinite loop */
+    while (1)
+    {
+        /* read and display current time */
+        clock_get_time(&hours, &minutes, &seconds);
+        display_time(hours, minutes, seconds);
+
+        /* increment time */
+        clock_increment_time();
+
+        /* wait one second */
+        usleep(1000000);
+    }
+}
+
+// ---------
+// Helper functions
+/* time_from_set_message: extract time from set message from user interface */
+void time_from_set_message(char message[], int *hours, int *minutes, int *seconds)
+{
+  sscanf(message,"set:%d:%d:%d",hours, minutes, seconds);
+}
+/* time_ok: returns nonzero if hours, minutes and seconds represents a valid time */
+int time_ok(int hours, int minutes, int seconds)
+{
+  return hours >= 1 && hours <= 12 && minutes >= 0 && minutes <= 59 &&
+  seconds >= 0 && seconds <= 59;
+}
+
+// ---
+/* set_task: reads messages from the user interface, and
+   sets the clock, or exits the program */
+
+
+void * clock_set_thread(void *unused)
+{
+    /* message array */
+    char message[SI_UI_MAX_MESSAGE_SIZE];
+
+    /* time read from user interface */
+    int hours, minutes, seconds;
+
+    /* set GUI size */
+    si_ui_set_size(400, 200);
+
+    while(1)
+    {
+        /* read a message */
+        si_ui_receive(message);
+        /* check if it is a set message */
+        if (strncmp(message, "set", 3) == 0)
+        {
+            time_from_set_message(message, &hours, &minutes, &seconds);
+            if (time_ok(hours, minutes, seconds))
+            {
+                clock_set_time(hours, minutes, seconds);
+            }
+            else
+            {
+                si_ui_show_error("Illegal value for hours, minutes or seconds");
+            }
+        }
+        /* check if it is an exit message */
+        else if (strcmp(message, "exit") == 0)
+        {
+            exit(0);
+        }
+        /* not a legal message */
+        else
+        {
+            si_ui_show_error("unexpected message type");
+        }
+    }
+}
+
+// ----------
+/* main program */
+
+int main(void)
+{
+    /* initialise UI channel */
+    si_ui_init();
+
+    /* initialise variables */
+    clock_init();
+
+    /* create tasks */
+    pthread_t clock_thread_handle;
+    pthread_t clock_set_thread_handle;
+
+    pthread_create(&clock_thread_handle, NULL, clock_thread, 0);
+    pthread_create(&clock_set_thread_handle, NULL, clock_set_thread, 0);
+
+    pthread_join(clock_thread_handle, NULL);
+    pthread_join(clock_set_thread_handle, NULL);
+    /* will never be here! */
+    return 0;
+}
