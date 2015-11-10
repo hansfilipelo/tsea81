@@ -119,29 +119,6 @@ void clock_get_time(int *hours, int *minutes, int *seconds)
     pthread_mutex_unlock(&Clock.mutex);
 }
 
-// ----------
-/* clock_task: clock task */
-
-void *clock_thread(void *unused)
-{
-    /* local copies of the current time */
-    int hours, minutes, seconds;
-
-    /* infinite loop */
-    while (1)
-    {
-        /* read and display current time */
-        clock_get_time(&hours, &minutes, &seconds);
-        display_time(hours, minutes, seconds);
-
-        /* increment time */
-        clock_increment_time();
-
-        /* wait one second */
-        usleep(1000000);
-    }
-}
-
 // ------
 // Get alarm time
 
@@ -157,6 +134,36 @@ void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
 
 }
 
+// ----------
+/* clock_task: clock task */
+
+void *clock_thread(void *unused)
+{
+    /* local copies of the current time */
+    int hours, minutes, seconds;
+    int alarmHours, alarmMinutes, alarmSeconds;
+
+    /* infinite loop */
+    while (1)
+    {
+        /* read and display current time */
+        clock_get_time(&hours, &minutes, &seconds);
+        clock_get_alarm_time(&alarmHours,&alarmMinutes,&alarmSeconds);
+        display_time(hours, minutes, seconds);
+
+        /* increment time */
+        clock_increment_time();
+
+        if (alarmHours == hours && alarmMinutes == minutes && alarmSeconds == seconds && Clock.alarm_enabled == 1) {
+          sem_post(&Clock.start_alarm);
+        }
+
+        /* wait one second */
+        usleep(1000000);
+    }
+}
+
+// -----------
 
 void clock_set_alarm_time(int hours, int minutes, int seconds){
 
@@ -197,10 +204,18 @@ int clock_get_alarm_status(){
 // ----------
 // Alarm task
 
-/*void *clock_alarm_thread(void *unused)
+void *clock_alarm_thread(void *unused)
 {
-  return 0;
-}*/
+
+  while (1) {
+    sem_wait(&Clock.start_alarm);
+
+    while (clock_get_alarm_status() == 1) {
+      display_alarm_text();
+      usleep(1500000);
+    }
+  }
+}
 
 // ---------
 // Helper functions
@@ -263,7 +278,7 @@ void * read_from_gui_thread(void *unused)
 	  time_from_alarm_message(message, &hours, &minutes, &seconds);
             if (time_ok(hours, minutes, seconds))
             {
-	      clock_set_alarm_time(hours, minutes, seconds);
+	             clock_set_alarm_time(hours, minutes, seconds);
             }
             else
             {
@@ -297,12 +312,15 @@ int main(void)
     /* create tasks */
     pthread_t clock_thread_handle;
     pthread_t read_from_gui_thread_handle;
+    pthread_t clock_alarm_thread_handle;
 
     pthread_create(&clock_thread_handle, NULL, clock_thread, 0);
     pthread_create(&read_from_gui_thread_handle, NULL, read_from_gui_thread, 0);
+    pthread_create(&clock_alarm_thread_handle, NULL, clock_alarm_thread, 0);
 
     pthread_join(clock_thread_handle, NULL);
     pthread_join(read_from_gui_thread_handle, NULL);
+    pthread_join(clock_alarm_thread_handle, NULL);
     /* will never be here! */
     return 0;
 }

@@ -7,6 +7,7 @@
 #include "display.h"
 #include <stdbool.h>
 
+
 /* clock_init: initialise clock */
 void clock_init(void);
 
