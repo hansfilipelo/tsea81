@@ -226,6 +226,8 @@ void clock_reset_alarm(){
   Clock.alarm_enabled = 0;
   pthread_mutex_unlock(&Clock.mutex);
 
+  erase_alarm_time();
+  erase_alarm_text();
   sem_post(&Clock.start_alarm);
 }
 
