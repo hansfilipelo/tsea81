@@ -1,6 +1,8 @@
 #include "clock.h"
 
+// ---------
 /* time data type */
+
 typedef struct
 {
     int hours;
@@ -8,7 +10,9 @@ typedef struct
     int seconds;
 } time_data_type;
 
+// ---------
 /* clock data type */
+
 typedef struct
 {
     /* the current time */
@@ -26,10 +30,14 @@ typedef struct
 
 } clock_data_type;
 
+// ---------
 /* the actual clock */
+
 static clock_data_type Clock;
 
+// ---------
 /* clock_init: initialise clock */
+
 void clock_init(void)
 {
     /* initialise time and alarm time */
@@ -50,7 +58,9 @@ void clock_init(void)
     sem_init(&Clock.start_alarm, 0, 0);
 }
 
+// ---------
 /* clock_set_time: set current time to hours, minutes and seconds */
+
 void clock_set_time(int hours, int minutes, int seconds)
 {
     pthread_mutex_lock(&Clock.mutex);
