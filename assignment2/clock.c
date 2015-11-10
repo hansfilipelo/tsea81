@@ -157,6 +157,22 @@ void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
 
 }
 
+
+void clock_set_alarm_time(int hours, int minutes, int seconds){
+
+   pthread_mutex_lock(&Clock.mutex);
+
+    Clock.alarm_time.hours = hours;
+    Clock.alarm_time.minutes = minutes;
+    Clock.alarm_time.seconds = seconds;
+    Clock.alarm_enabled = 1;
+
+    pthread_mutex_unlock(&Clock.mutex);
+
+    display_alarm_time(hours, minutes, seconds);
+
+}
+
 // ------
 // Gets alarm status
 
@@ -181,25 +197,10 @@ int clock_get_alarm_status(){
 // ----------
 // Alarm task
 
-void *clock_alarm_thread(void *unused)
+/*void *clock_alarm_thread(void *unused)
 {
-    /* local copies of the current time */
-    int hours, minutes, seconds;
-
-    /* infinite loop */
-    while (1)
-    {
-        /* read and display current time */
-        clock_get_alarm_time(&hours, &minutes, &seconds);
-        display_alarm_time(hours, minutes, seconds);
-
-        /* increment time */
-        clock_increment_time();
-
-        /* wait one second */
-        usleep(1000000);
-    }
-}
+  return 0;
+}*/
 
 // ---------
 // Helper functions
@@ -209,6 +210,13 @@ void time_from_set_message(char message[], int *hours, int *minutes, int *second
 {
   sscanf(message,"set %d %d %d",hours, minutes, seconds);
 }
+
+/* */
+void time_from_alarm_message(char message[], int *hours, int *minutes, int *seconds)
+{
+  sscanf(message,"alarm %d %d %d",hours, minutes, seconds);
+}
+
 /* time_ok: returns nonzero if hours, minutes and seconds represents a valid time */
 int time_ok(int hours, int minutes, int seconds)
 {
@@ -221,7 +229,7 @@ int time_ok(int hours, int minutes, int seconds)
    sets the clock, or exits the program */
 
 
-void * clock_set_thread(void *unused)
+void * read_from_gui_thread(void *unused)
 {
     /* message array */
     char message[SI_UI_MAX_MESSAGE_SIZE];
@@ -243,6 +251,19 @@ void * clock_set_thread(void *unused)
             if (time_ok(hours, minutes, seconds))
             {
                 clock_set_time(hours, minutes, seconds);
+            }
+            else
+            {
+                si_ui_show_error("Illegal value for hours, minutes or seconds");
+            }
+        }
+	/* check if it is an alarm set message */
+	else if (strncmp(message, "alarm", 3) == 0)
+        {
+	  time_from_alarm_message(message, &hours, &minutes, &seconds);
+            if (time_ok(hours, minutes, seconds))
+            {
+	      clock_set_alarm_time(hours, minutes, seconds);
             }
             else
             {
@@ -275,13 +296,13 @@ int main(void)
 
     /* create tasks */
     pthread_t clock_thread_handle;
-    pthread_t clock_set_thread_handle;
+    pthread_t read_from_gui_thread_handle;
 
     pthread_create(&clock_thread_handle, NULL, clock_thread, 0);
-    pthread_create(&clock_set_thread_handle, NULL, clock_set_thread, 0);
+    pthread_create(&read_from_gui_thread_handle, NULL, read_from_gui_thread, 0);
 
     pthread_join(clock_thread_handle, NULL);
-    pthread_join(clock_set_thread_handle, NULL);
+    pthread_join(read_from_gui_thread_handle, NULL);
     /* will never be here! */
     return 0;
 }
