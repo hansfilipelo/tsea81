@@ -142,8 +142,66 @@ void *clock_thread(void *unused)
     }
 }
 
+// ------
+// Get alarm time
+
+void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
+
+  pthread_mutex_lock(&Clock.mutex);
+
+  *hours = Clock.alarm_time.hours;
+  *minutes = Clock.alarm_time.minutes;
+  *seconds = Clock.alarm_time.seconds;
+
+  pthread_mutex_unlock(&Clock.mutex);
+
+}
+
+// ------
+// Gets alarm status
+
+int clock_get_alarm_status(){
+
+  pthread_mutex_lock(&Clock.mutex);
+
+  if (Clock.alarm_enabled == 0){
+    return 0;
+  }
+  else if(Clock.alarm_enabled == 1){
+    return 1;
+  }
+  else{
+      si_ui_show_error("Alarm enable in undefined state.");
+  }
+  pthread_mutex_unlock(&Clock.mutex);
+}
+
+// ----------
+// Alarm task
+
+void *clock_alarm_thread(void *unused)
+{
+    /* local copies of the current time */
+    int hours, minutes, seconds;
+
+    /* infinite loop */
+    while (1)
+    {
+        /* read and display current time */
+        clock_get_alarm_time(&hours, &minutes, &seconds);
+        display_alarm_time(hours, minutes, seconds);
+
+        /* increment time */
+        clock_increment_time();
+
+        /* wait one second */
+        usleep(1000000);
+    }
+}
+
 // ---------
 // Helper functions
+
 /* time_from_set_message: extract time from set message from user interface */
 void time_from_set_message(char message[], int *hours, int *minutes, int *seconds)
 {
