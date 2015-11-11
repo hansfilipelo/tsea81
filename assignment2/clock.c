@@ -157,7 +157,7 @@ void *clock_thread(void *unused)
 
 #else // Linux Implementation
 
-  delay =  = 1000*1000*1000; //1s in ns
+  delay = 1000*1000*1000; //1s in ns
   /* initialise time for next update */
 
   /* time for next update */
@@ -266,7 +266,7 @@ void *clock_alarm_thread(void *unused)
 
 #else // Linux Implementation
 
-  delay =  = 500*1000*1000; //1,5s in ns - cause overflow when actually using 1,5s
+  delay = 500*1000*1000; //1,5s in ns - cause overflow when actually using 1,5s
   /* initialise time for next update */
 
   /* time for next update */
