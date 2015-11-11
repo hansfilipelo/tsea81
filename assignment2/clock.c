@@ -55,13 +55,17 @@ void clock_init(void)
 
   /* initialise semaphores */
   pthread_mutex_init(&Clock.mutex, NULL);
+#ifdef __APPLE__
+  Clock.start_alarm = *sem_open("/semaphore", O_CREAT, 0644, 0);
+#else
   sem_init(&Clock.start_alarm, 0, 0);
+#endif
 }
 
 // ---------
-/* clock_set_time: set current time to hours, minutes and seconds */
+/* clock_time_set: set current time to hours, minutes and seconds */
 
-void clock_set_time(int hours, int minutes, int seconds)
+void clock_time_set(int hours, int minutes, int seconds)
 {
   pthread_mutex_lock(&Clock.mutex);
 
@@ -139,11 +143,28 @@ void clock_get_alarm_time(int* hours, int* minutes, int* seconds){
 
 void *clock_thread(void *unused)
 {
-  int delay = 1000*1000*1000; //1s in ns
+  int delay;
+
+  // Implementation of abs time for Mac OS
+#ifdef __APPLE__
+
+  delay = 1000*1000; //1s in us
+
+  struct timeval ts;
+
+  struct timeval tzp;
+  gettimeofday(&ts, &tzp);
+
+#else // Linux Implementation
+
+  delay =  = 1000*1000*1000; //1s in ns
+  /* initialise time for next update */
+
   /* time for next update */
   struct timespec ts;
-  /* initialise time for next update */
+
   clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
 
   /* local copies of the current time */
   int hours, minutes, seconds;
@@ -164,6 +185,17 @@ void *clock_thread(void *unused)
       sem_post(&Clock.start_alarm);
     }
 
+#ifdef __APPLE__
+
+  ts.tv_usec += delay;
+  if (ts.tv_usec >= 1000*1000) {
+    ts.tv_usec -= 1000*1000;
+    ts.tv_sec++;
+  }
+
+  mach_wait_until(ts.tv_sec*1000*1000*1000 + ts.tv_usec*1000);
+
+#else
     /* compute time for next update */
     ts.tv_nsec += delay;
     if(ts.tv_nsec >= 1000*1000*1000){
@@ -172,6 +204,7 @@ void *clock_thread(void *unused)
     }
     /* wait until time for next update */
     clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
+#endif
   }
 }
 
@@ -219,19 +252,47 @@ int clock_get_alarm_status(){
 
 void *clock_alarm_thread(void *unused)
 {
-  int delay = 500*1000*1000; //1,5s in ns - cause overflow when actually using 1,5s
+  int delay;
+
+  // Implementation of abs time for Mac OS
+#ifdef __APPLE__
+
+  delay = 1500*1000; //1s in us
+
+  struct timeval ts;
+
+  struct timeval tzp;
+  gettimeofday(&ts, &tzp);
+
+#else // Linux Implementation
+
+  delay =  = 500*1000*1000; //1,5s in ns - cause overflow when actually using 1,5s
+  /* initialise time for next update */
+
   /* time for next update */
   struct timespec ts;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
 
   while (1) {
     sem_wait(&Clock.start_alarm);
 
     while (clock_get_alarm_status() == 1) {
-      /* initialise time for next update */
-      clock_gettime(CLOCK_MONOTONIC, &ts);
 
       display_alarm_text();
 
+#ifdef __APPLE__
+
+        ts.tv_usec += delay;
+        if (ts.tv_usec >= 1000*1000) {
+          ts.tv_usec -= 1000*1000;
+          ts.tv_sec++;
+        }
+
+        mach_wait_until(ts.tv_sec*1000*1000*1000 + ts.tv_usec*1000);
+
+#else
       /* compute time for next update */
       ts.tv_nsec += delay;
       ts.tv_sec++; // cause overflow when actually using 1,5s
@@ -241,6 +302,7 @@ void *clock_alarm_thread(void *unused)
       }
       /* wait until time for next update */
       clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL);
+#endif
     }
   }
 }
@@ -306,7 +368,7 @@ void * read_from_gui_thread(void *unused)
       time_from_set_message(message, &hours, &minutes, &seconds);
       if (time_ok(hours, minutes, seconds))
       {
-        clock_set_time(hours, minutes, seconds);
+        clock_time_set(hours, minutes, seconds);
       }
       else
       {
