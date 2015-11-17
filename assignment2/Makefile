@@ -2,7 +2,7 @@
 LDFLAGS =
 COMPILER = gcc
 #Compiler flags, enable warnings
-GCCFLAGS = -Wall -lpthread
+GCCFLAGS = -g3 -Wall -pthread -lpthread
 #SOURCES that are needed for all sub-compilations
 SOURCES = clock.c display.c si_comm.c si_ui.c
 

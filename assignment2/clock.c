@@ -35,6 +35,25 @@ typedef struct
 
 static clock_data_type Clock;
 
+
+#ifdef __APPLE__
+sem_t* semaphore_creator(char *name) {
+    sem_t *sem;
+    sem_unlink(name);
+    sem = sem_open(name, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 0);
+    if (sem == SEM_FAILED) {
+        if (errno == EEXIST) {
+            sem_unlink(name);
+            sem = sem_open(name, O_CREAT | O_EXCL, S_IRUSR | S_IWUSR, 0);
+        }
+    }
+    if (sem == SEM_FAILED) {
+        printf("Error creating semaphore");
+    }
+    return sem;
+}
+#endif
+
 // ---------
 /* clock_init: initialise clock */
 
@@ -56,7 +75,9 @@ void clock_init(void)
   /* initialise semaphores */
   pthread_mutex_init(&Clock.mutex, NULL);
 #ifdef __APPLE__
-  Clock.start_alarm = *sem_open("/semaphore", O_CREAT, 0644, 0);
+  sem_t *temp = semaphore_creator("name");
+
+  Clock.start_alarm = *temp;
 #else
   sem_init(&Clock.start_alarm, 0, 0);
 #endif
