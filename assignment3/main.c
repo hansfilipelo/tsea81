@@ -28,6 +28,7 @@ static int get_random_value(int passenger_id, int maximum_value)
 }
 
 static lift_type Lift;
+static sem_t id_wait; // Semaphore for waitin upon passenger creation
 
 // Initialize the random seeds used by the get_random_value() function
 // above.
@@ -70,6 +71,7 @@ static void *passenger_thread(void *idptr)
 
 	int *tmp = (int *) idptr;
 	int id = *tmp;
+	sem_post(&id_wait);
 
 	while(1){
 		// * Select random floors
@@ -82,6 +84,8 @@ static void *passenger_thread(void *idptr)
 static void *user_thread(void *unused)
 {
 	int current_passenger_id = 0;
+	sem_init(&id_wait, 0, 0);
+
 	char message[SI_UI_MAX_MESSAGE_SIZE];
 
 	si_ui_set_size(670, 700);
@@ -90,11 +94,21 @@ static void *user_thread(void *unused)
 		// Read a message from the GUI
 		si_ui_receive(message);
 		if(!strcmp(message, "new")){
-			// create a new passenger if possible, else
-			// use si_ui_show_error() to show an error
-			// message if too many passengers have been
-			// created. Make sure that each passenger gets
-			// a unique ID between 0 and MAX_N_PERSONS-1.
+
+			if (current_passenger_id > MAX_N_PERSONS-1) {
+				si_ui_show_error("No more passengers allowed");
+			}
+			else {
+				pthread_t passenger_thread_handle;
+
+				pthread_create(&passenger_thread_handle, NULL, passenger_thread,&current_passenger_id);
+				pthread_detach(passenger_thread_handle);
+
+				sem_wait(&id_wait);
+				current_passenger_id++;
+			}
+
+
 		}else if(!strcmp(message, "exit")){
 			lift_delete(Lift);
 			exit(0);
