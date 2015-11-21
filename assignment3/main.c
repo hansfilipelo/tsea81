@@ -51,8 +51,13 @@ static void init_random(void)
 
 static void *lift_thread(void *unused)
 {
+	int change_direction = 0;
+	int next_floor;
+
 	while(1){
-		// Move lift one floor
+		lift_next_floor(Lift, &next_floor, &change_direction);
+		lift_move(Lift, next_floor, change_direction);
+		change_direction = 0;
 	}
 	return NULL;
 }
@@ -77,10 +82,10 @@ static void *passenger_thread(void *idptr)
 static void *user_thread(void *unused)
 {
 	int current_passenger_id = 0;
-	char message[SI_UI_MAX_MESSAGE_SIZE]; 
+	char message[SI_UI_MAX_MESSAGE_SIZE];
 
-	si_ui_set_size(670, 700); 
-	
+	si_ui_set_size(670, 700);
+
 	while(1){
 		// Read a message from the GUI
 		si_ui_receive(message);
@@ -105,8 +110,12 @@ int main(int argc, char **argv)
 	init_random();
 	Lift = lift_create();
 
-        // Create tasks as appropriate here
-	
+	pthread_t lift_thread_handle;
+
+	pthread_create(&lift_thread_handle, NULL, lift_thread,0);
+
+	pthread_join(lift_thread_handle, NULL);
+
 
 	return 0;
 }
