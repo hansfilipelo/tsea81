@@ -111,10 +111,13 @@ int main(int argc, char **argv)
 	Lift = lift_create();
 
 	pthread_t lift_thread_handle;
+	pthread_t user_thread_handle;
 
 	pthread_create(&lift_thread_handle, NULL, lift_thread,0);
+	pthread_create(&user_thread_handle, NULL, user_thread,0);
 
 	pthread_join(lift_thread_handle, NULL);
+	pthread_join(user_thread_handle, NULL);
 
 
 	return 0;
