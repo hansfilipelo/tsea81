@@ -165,6 +165,7 @@ static int n_passengers_in_lift(lift_type lift)
    shall move again. */
 void lift_has_arrived(lift_type lift)
 {
+    pthread_cond_broadcast(&lift->change);
 }
 
 /* --- functions related to lift task END --- */
@@ -252,6 +253,18 @@ static void leave_floor(
    starting at from_floor, and ending at to_floor */
 void lift_travel(lift_type lift, int id, int from_floor, int to_floor)
 {
+    pthread_mutex_lock(&lift->mutex);
+    
+    enter_floor(lift,id,from_floor);
+    
+    while(passenger_wait_for_lift(lift, from_floor)) {
+        pthread_cond_wait(&lift->change, &lift->mutex);
+    }
+    
+    leave_floor(lift, id, to_floor);
+    
+    pthread_mutex_unlock(&lift->mutex);
+    
 }
 
 /* --- functions related to person task END --- */
