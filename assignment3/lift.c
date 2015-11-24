@@ -17,7 +17,7 @@ static void lift_panic(const char message[])
     printf("LIFT_PANIC!!! ");
     printf("%s", message);
     printf("\n");
-    exit(0);
+    exit(0); // TEST
 }
 
 /* --- monitor data type for lift and operations for create and delete START --- */
@@ -159,13 +159,45 @@ static int n_passengers_in_lift(lift_type lift)
     return n_passengers;
 }
 
+static int persons_on_floor(lift_type lift, int floor)
+{
+    int i;
+    
+    for(i = 0; i < MAX_N_PERSONS; i++) {
+        if ((lift->persons_to_enter[floor][i].id == NO_ID)||(i == MAX_N_PERSONS-1)) {
+            return i;
+        }
+    }
+    
+}
+
 /* MONITOR function lift_has_arrived: shall be called by the lift task
    when the lift has arrived at the next floor. This function indicates
    to other tasks that the lift has arrived, and then waits until the lift
    shall move again. */
 void lift_has_arrived(lift_type lift)
 {
+    pthread_mutex_lock(&lift->mutex);
+    
+    int tmp_count = 0;
+    int count_roof = 0;
+    if(persons_on_floor(lift, lift->floor) < MAX_N_PASSENGERS - n_passengers_in_lift(lift))
+    {
+        count_roof = persons_on_floor(lift, lift->floor);
+    }
+    else
+    {
+        count_roof = MAX_N_PASSENGERS - n_passengers_in_lift(lift);
+    }
+  
     pthread_cond_broadcast(&lift->change);
+    
+    while(tmp_count < count_roof) {
+        pthread_cond_wait(&lift->change, &lift->mutex);
+        tmp_count++;
+    }    
+    
+    pthread_mutex_unlock(&lift->mutex);
 }
 
 /* --- functions related to lift task END --- */
@@ -259,9 +291,17 @@ void lift_travel(lift_type lift, int id, int from_floor, int to_floor)
     
     while(passenger_wait_for_lift(lift, from_floor)) {
         pthread_cond_wait(&lift->change, &lift->mutex);
+        printf("%i", lift->moving);
+        printf("\n");
+        printf("After cond_wait");
+        printf("\n");
     }
     
-    leave_floor(lift, id, to_floor);
+    printf("After while loop");
+    printf("\n");
+    pthread_cond_broadcast(&lift->change);
+    
+    leave_floor(lift, id, from_floor);
     
     pthread_mutex_unlock(&lift->mutex);
     
