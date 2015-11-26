@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
+#include "debug.h"
 #include "lift.h"
 #include "si_ui.h"
 
@@ -82,8 +83,9 @@ static void *passenger_thread(void *idptr)
          from_floor = get_random_value(id, N_FLOORS - 1);
         }
 
+				debug_check_override(id, &from_floor, &to_floor);
         lift_travel(Lift, id, from_floor, to_floor);
-        
+
         sleep(5);
 
 		// * Select random floors
@@ -121,7 +123,20 @@ static void *user_thread(void *unused)
 			}
 
 
-		}else if(!strcmp(message, "exit")){
+		}else if(!strcmp(message, "pause")){
+			debug_pause();
+		}
+		else if(!strcmp(message, "unpause")){
+			debug_unpause();
+		}
+		else if(!strcmp(message, "test")){
+			int i;
+
+			for (i = 0; i <= current_passenger_id; i++) {
+				debug_override(i, 2, 0);
+			}
+		}
+		else if(!strcmp(message, "exit")){
 			lift_delete(Lift);
 			exit(0);
 		}
@@ -133,6 +148,7 @@ static void *user_thread(void *unused)
 int main(int argc, char **argv)
 {
 	si_ui_init();
+	debug_init();
 	init_random();
 	Lift = lift_create();
 
