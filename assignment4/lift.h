@@ -66,9 +66,6 @@ typedef lift_data_type* lift_type;
 /* lift_create: creates and initialises a variable of type lift_type */
 lift_type lift_create(void);
 
-/* lift_delete: deallocates memory for lift */
-void lift_delete(lift_type lift);
-
 /* fig_begin mon_functions */
 /* MONITOR function lift_next_floor: computes the floor to which
    the lift shall travel. The parameter *change_direction
@@ -82,19 +79,6 @@ void lift_next_floor(
    called by the lift process when the lift shall move */
 void lift_move(
     lift_type lift, int next_floor, int change_direction);
-
-/* MONITOR function lift_has_arrived: shall be called by the lift
-   process when the lift has arrived at the next floor. This function
-   indicates to other processes that the lift has arrived, and then waits
-   until the lift shall move again. */
-void lift_has_arrived(lift_type lift);
-
-/* MONITOR function lift_travel: makes the person with id id perform
-   a journey with the lift, starting at from_floor and ending
-   at to_floor */
-void lift_travel(
-    lift_type lift, int id, int from_floor, int to_floor);
-/* fig_end mon_functions */
 
 int n_passengers_in_lift(lift_type lift);
 
