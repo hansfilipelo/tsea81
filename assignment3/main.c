@@ -13,6 +13,11 @@
 #define _MAX_ITERATIONS_ 5
 FILE *output_file;
 pthread_mutex_t file_mutex;
+pthread_barrier_t thread_done_barrier;
+
+// Counter which counts number of threads ready
+int threads_ready = 0;
+pthread_mutex_t counter_mutex;
 
 // Unfortunately the rand() function is not thread-safe. However, the
 // rand_r() function is thread-safe, but need a pointer to an int to
@@ -66,8 +71,14 @@ static void *lift_thread(void *unused)
 		lift_move(Lift, next_floor, change_direction);
 		lift_has_arrived(Lift);
 		change_direction = 0;
+
+		pthread_mutex_lock(&counter_mutex);
+		if (threads_ready >= MAX_N_PERSONS) {
+			break;
+		}
+		pthread_mutex_unlock(&counter_mutex);
 	}
-	return NULL;
+	exit(0);
 }
 
 static void *passenger_thread(void *idptr)
@@ -108,6 +119,8 @@ static void *passenger_thread(void *idptr)
 		}
 		else {
 
+			pthread_barrier_wait(&thread_done_barrier);
+
 			int i;
 			char write_string[40*_MAX_ITERATIONS_];
 			char line[40];
@@ -131,9 +144,15 @@ static void *passenger_thread(void *idptr)
 
 			pthread_mutex_unlock(&file_mutex);
 
+			// We're ready - give signal
+			pthread_mutex_lock(&counter_mutex);
+			threads_ready += 1;
+			pthread_mutex_unlock(&counter_mutex);
+
 			return 0;
 		}
 	}
+
 	return NULL;
 }
 
@@ -162,6 +181,8 @@ int main(int argc, char **argv)
 {
 	// Mutex output file
 	pthread_mutex_init(&file_mutex,NULL);
+	pthread_barrier_init(&thread_done_barrier,NULL,MAX_N_PERSONS);
+	pthread_mutex_init(&counter_mutex,NULL);
 	// output stop
 
 	debug_init();
