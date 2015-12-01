@@ -6,4 +6,4 @@ lift_pthreads: $(CFILES) $(HEADERS)
 	gcc $(CFLAGS) $(CFILES) -o lift_pthreads $(LIBS)
 
 clean:
-	rm -f lift_pthreads *~ *.o
+	rm -f lift_pthreads *~ *.o stats.txt

@@ -10,7 +10,7 @@
 #include <string.h>
 #include <sys/time.h>
 
-#define _MAX_ITERATIONS_ 5
+#define _MAX_ITERATIONS_ 10000
 FILE *output_file;
 pthread_mutex_t file_mutex;
 pthread_barrier_t thread_done_barrier;
