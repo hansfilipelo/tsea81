@@ -7,6 +7,7 @@
 #include "debug.h"
 #include "lift.h"
 #include "si_ui.h"
+#include <sys/time.h>
 
 
 // Unfortunately the rand() function is not thread-safe. However, the
@@ -59,7 +60,7 @@ static void *lift_thread(void *unused)
 	while(1){
 		lift_next_floor(Lift, &next_floor, &change_direction);
 		lift_move(Lift, next_floor, change_direction);
-        lift_has_arrived(Lift);
+		lift_has_arrived(Lift);
 		change_direction = 0;
 	}
 	return NULL;
@@ -75,18 +76,33 @@ static void *passenger_thread(void *idptr)
 	int id = *tmp;
 	sem_post(&id_wait);
 
+	struct timeval starttime;
+	struct timeval endtime;
+	long long int timediff;
+
+
 	while(1){
 
-        int from_floor = get_random_value(id, N_FLOORS - 1);
-        int to_floor = get_random_value(id, N_FLOORS - 1);
-        while(to_floor == from_floor) {
-         from_floor = get_random_value(id, N_FLOORS - 1);
-        }
+		int from_floor = get_random_value(id, N_FLOORS - 1);
+		int to_floor = get_random_value(id, N_FLOORS - 1);
+		while(to_floor == from_floor) {
+			from_floor = get_random_value(id, N_FLOORS - 1);
+		}
 
-				debug_check_override(id, &from_floor, &to_floor);
-        lift_travel(Lift, id, from_floor, to_floor);
+		debug_check_override(id, &from_floor, &to_floor);
 
-        sleep(5);
+		gettimeofday(&starttime, NULL);
+
+		lift_travel(Lift, id, from_floor, to_floor);
+
+		gettimeofday(&endtime, NULL);
+		timediff = (endtime.tv_sec*1000000ULL + endtime.tv_usec) -
+		(starttime.tv_sec*1000000ULL + starttime.tv_usec);
+		printf("  time difference: %lld\n", foo);
+		printf("\n");
+
+
+		sleep(5);
 
 		// * Select random floors
 		// * Travel between these floors
