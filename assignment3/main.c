@@ -133,12 +133,6 @@ static void *passenger_thread(void *idptr)
 
 			return 0;
 		}
-
-		//sleep(5);
-
-		// * Select random floors
-		// * Travel between these floors
-		// * Wait a little while
 	}
 	return NULL;
 }
@@ -148,46 +142,17 @@ static void *user_thread(void *unused)
 	int current_passenger_id = 0;
 	sem_init(&id_wait, 0, 0);
 
-	char message[SI_UI_MAX_MESSAGE_SIZE];
-
 	si_ui_set_size(670, 700);
 
-	while(1){
-		// Read a message from the GUI
-		si_ui_receive(message);
-		if(!strcmp(message, "new")){
+	int i;
+	for (i = 0; i < MAX_N_PERSONS; i++) {
+		pthread_t passenger_thread_handle;
 
-			if (current_passenger_id > MAX_N_PERSONS-1) {
-				si_ui_show_error("No more passengers allowed");
-			}
-			else {
-				pthread_t passenger_thread_handle;
+		pthread_create(&passenger_thread_handle, NULL, passenger_thread,&current_passenger_id);
+		pthread_detach(passenger_thread_handle);
 
-				pthread_create(&passenger_thread_handle, NULL, passenger_thread,&current_passenger_id);
-				pthread_detach(passenger_thread_handle);
-
-				sem_wait(&id_wait);
-				current_passenger_id++;
-			}
-
-
-		}else if(!strcmp(message, "pause")){
-			debug_pause();
-		}
-		else if(!strcmp(message, "unpause")){
-			debug_unpause();
-		}
-		else if(!strcmp(message, "test")){
-			int i;
-
-			for (i = 0; i <= current_passenger_id; i++) {
-				debug_override(i, 2, 0);
-			}
-		}
-		else if(!strcmp(message, "exit")){
-			lift_delete(Lift);
-			exit(0);
-		}
+		sem_wait(&id_wait);
+		current_passenger_id++;
 	}
 	return NULL;
 }
@@ -199,7 +164,6 @@ int main(int argc, char **argv)
 	pthread_mutex_init(&file_mutex,NULL);
 	// output stop
 
-	si_ui_init();
 	debug_init();
 	init_random();
 	Lift = lift_create();
