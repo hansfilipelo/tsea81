@@ -7,8 +7,12 @@
 #include "debug.h"
 #include "lift.h"
 #include "si_ui.h"
+#include <string.h>
 #include <sys/time.h>
 
+#define _MAX_ITERATIONS_ 5
+FILE *output_file;
+pthread_mutex_t file_mutex;
 
 // Unfortunately the rand() function is not thread-safe. However, the
 // rand_r() function is thread-safe, but need a pointer to an int to
@@ -78,8 +82,9 @@ static void *passenger_thread(void *idptr)
 
 	struct timeval starttime;
 	struct timeval endtime;
-	long long int timediff;
 
+	long long int* timediffs[_MAX_ITERATIONS_];
+	int counter = 0;
 
 	while(1){
 
@@ -96,13 +101,40 @@ static void *passenger_thread(void *idptr)
 		lift_travel(Lift, id, from_floor, to_floor);
 
 		gettimeofday(&endtime, NULL);
-		timediff = (endtime.tv_sec*1000000ULL + endtime.tv_usec) -
-		(starttime.tv_sec*1000000ULL + starttime.tv_usec);
-		printf("  time difference: %lld\n", foo);
-		printf("\n");
 
+		if ( counter < _MAX_ITERATIONS_) {
+			timediffs[counter] = (endtime.tv_sec*1000000ULL + endtime.tv_usec) - (starttime.tv_sec*1000000ULL + starttime.tv_usec);
+			counter++;
+		}
+		else {
 
-		sleep(5);
+			int i;
+			char write_string[40*_MAX_ITERATIONS_];
+			char line[40];
+			pthread_mutex_lock(&file_mutex);
+
+			output_file = fopen("stats.txt", "a");
+			if (output_file == NULL)
+			{
+					printf("Error opening file!\n");
+					exit(1);
+			}
+
+			for (i = 0; i < _MAX_ITERATIONS_; i++) {
+				sprintf(line,"%i",timediffs[i]);
+				strcat(line,"\n");
+				strcat(write_string,line);
+				memset(line, 0,sizeof(line[0])*40);
+			}
+			fputs(write_string,output_file);
+			fclose(output_file);
+
+			pthread_mutex_unlock(&file_mutex);
+
+			return 0;
+		}
+
+		//sleep(5);
 
 		// * Select random floors
 		// * Travel between these floors
@@ -163,6 +195,10 @@ static void *user_thread(void *unused)
 
 int main(int argc, char **argv)
 {
+	// Mutex output file
+	pthread_mutex_init(&file_mutex,NULL);
+	// output stop
+
 	si_ui_init();
 	debug_init();
 	init_random();

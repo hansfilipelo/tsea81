@@ -119,7 +119,7 @@ void lift_move(lift_type lift, int next_floor, int change_direction)
     pthread_mutex_unlock(&lift->mutex);
 
     /* it takes two seconds to move to the next floor */
-    usleep(2000000);
+    //usleep(2000000);
 
     /* reserve lift */
     pthread_mutex_lock(&lift->mutex);
@@ -137,7 +137,7 @@ void lift_move(lift_type lift, int next_floor, int change_direction)
     }
 
     /* draw, since a change has occurred */
-    draw_lift(lift);
+    //draw_lift(lift);
 
     /* release lift */
     pthread_mutex_unlock(&lift->mutex);
