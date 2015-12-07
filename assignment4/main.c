@@ -259,7 +259,6 @@ static void person_process(int id)
       m_send.type = FINISHED_WRITING;
       m_send.person_id = id;
       message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
-      printf("Person %i finished writing \n", id);
 
       return;
     }
@@ -333,6 +332,8 @@ void file_process(void)
       message_receive(buf, 4096, QUEUE_FILE);
       m_recieve = (struct lift_msg *) buf;
     }
+
+    printf("Person %i finished writing \n", persons_done);
   }
 
   // Kill all remaining processes and cleanup
