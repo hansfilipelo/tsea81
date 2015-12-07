@@ -11,6 +11,7 @@
 #include "messages.h"
 #include <string.h>
 #include "draw.h"
+#include <sys/wait.h>
 
 #define QUEUE_LIFT 1
 #define QUEUE_FIRSTPERSON 10
@@ -88,8 +89,6 @@ static void lift_process(void)
   char msgbuf[4096];
   while(1){
     int i;
-    int raknare = 0;
-    int it = 0;
     struct lift_msg reply;
     struct lift_msg *m;
     int len = message_receive(msgbuf, 4096, QUEUE_LIFT); // Wait for a message
@@ -148,18 +147,6 @@ static void lift_process(void)
 
       break;
       case LIFT_TRAVEL:
-
-      // --------- Print passengers in lift and pass to enter
-
-      // for (raknare = 0; raknare < N_FLOORS; raknare++) {
-      //   for (it = 0; it < MAX_N_PASSENGERS; it++) {
-      //     printf("%i ",Lift->persons_to_enter[raknare][it].id);
-      //   }
-      //   printf("\n");
-      // }
-
-      // --------------------
-
       //    Update the Lift structure so that the person with the given ID  is now present on the floor
       for(i = 0; i < MAX_N_PERSONS; i++)
       {
@@ -169,6 +156,19 @@ static void lift_process(void)
           break;
         }
       }
+      break;
+
+      case LIFT_TRAVEL_DONE:
+      printf("Undefined state!\n");
+      break;
+      case REQUEST_TO_WRITE:
+      printf("Undefined state!\n");
+      break;
+      case OK_TO_WRITE:
+      printf("Undefined state!\n");
+      break;
+      case FINISHED_WRITING:
+      printf("Undefined state!\n");
       break;
     }
   }
@@ -202,6 +202,10 @@ static void person_process(int id)
       gettimeofday(&starttime, NULL);
       //    Wait for a LIFT_TRAVEL_DONE message
       int len = message_receive(buf, 4096, QUEUE_FIRSTPERSON + id); // Wait for a message
+      if(len < sizeof(struct lift_msg)){
+        fprintf(stderr, "Message too short\n");
+        continue;
+      }
 
       gettimeofday(&endtime, NULL);
 
@@ -272,7 +276,6 @@ void uicommand_process(void)
 {
   int i;
   int person_counter = 0;
-  char message[SI_UI_MAX_MESSAGE_SIZE];
 
   for (i = 0; i < MAX_N_PERSONS; i++) {
     person_pid[person_counter] = fork();
@@ -309,7 +312,7 @@ void file_process(void)
     persons_to_write++;
   }
 
-  // Kill lift processes
+  // Kill lift processes since there's no passengers travelling
   kill(lift_pid, SIGINT);
   kill(liftmove_pid, SIGINT);
 
@@ -364,6 +367,7 @@ int main(int argc, char **argv)
 
   uicommand_process();
 
+  // Wait for filepid to exit
   int returnStatus;
   waitpid(file_pid, &returnStatus, 0);
 
