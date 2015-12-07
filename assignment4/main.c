@@ -185,7 +185,7 @@ static void person_process(int id)
   struct timeval starttime;
   struct timeval endtime;
 
-  long long int* timediffs[_MAX_ITERATIONS_];
+  long long int timediffs[_MAX_ITERATIONS_];
   int counter = 0;
 
   while(1){
@@ -244,7 +244,7 @@ static void person_process(int id)
 
       // Concat one string so that we write only once to file (one disk access)
       for (i = 0; i < _MAX_ITERATIONS_; i++) {
-        sprintf(line,"%lli",*timediffs[i]);
+        sprintf(line,"%lli",timediffs[i]);
         strcat(line,"\n");
         strcat(write_string,line);
         memset(line, 0,sizeof(line[0])*40);
