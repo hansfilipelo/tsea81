@@ -222,17 +222,16 @@ static void person_process(int id)
       message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
 
 
+      // wait for ok to write ------------
       message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
       m_recieve = (struct lift_msg *) buf;
       while(m_recieve->type != OK_TO_WRITE)
       {
-        // wait for ok to write
-        printf("Not OK to write yet: ");
-        printf("%d\n",m_recieve->type);
         message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
         m_recieve = (struct lift_msg *) buf;
       }
-      printf("Person %i allowed to write \n", id);
+      // ----------------------------------
+      // Assemble data and write
 
       output_file = fopen("stats.txt", "a");
       if (output_file == NULL)
@@ -241,16 +240,20 @@ static void person_process(int id)
         exit(1);
       }
 
+      // Concat one string so that we write only once to file (one disk access)
       for (i = 0; i < _MAX_ITERATIONS_; i++) {
         sprintf(line,"%i",timediffs[i]);
         strcat(line,"\n");
         strcat(write_string,line);
         memset(line, 0,sizeof(line[0])*40);
       }
+      // Write
       fputs(write_string,output_file);
       fclose(output_file);
 
-      // message finished writing to file
+      // ---------------------------------
+
+      // message finished writing to file thread
       m_send.type = FINISHED_WRITING;
       m_send.person_id = id;
       message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
@@ -281,6 +284,8 @@ void uicommand_process(void)
     person_counter++;
   }
 
+  while (1);
+  
   return;
 
 }
@@ -294,7 +299,8 @@ void file_process(void)
   int persons_to_write = 0;
   int persons_done;
 
-  // wait for message from all persons
+  // --------------------------
+  // wait for REQUEST_TO_WRITE message from all persons
   while(persons_to_write < MAX_N_PERSONS)
   {
     message_receive(buf, 4096, QUEUE_FILE);
@@ -307,37 +313,36 @@ void file_process(void)
     persons_to_write++;
   }
 
+  // Kill lift processes
+  kill(uidraw_pid, SIGINT);
+  kill(lift_pid, SIGINT);
+  kill(liftmove_pid, SIGINT);
+
+  // --------------------------
   // send ok to write and wait for finished response to each person
   for (persons_done = 0; persons_done < MAX_N_PERSONS; persons_done++) {
+    // Assemble message
     m_send.type = OK_TO_WRITE;
     m_send.person_id = persons_done;
     message_send((char *) &m_send, sizeof(m_send), QUEUE_FIRSTPERSON + persons_done, 1);
 
-    printf("\nSent allowing message to person %i \n", persons_done);
-
+    // Wait here for a FINISHED_WRITING-message
     message_receive(buf, 4096, QUEUE_FILE);
     m_recieve = (struct lift_msg *) buf;
 
     while(m_recieve->type != FINISHED_WRITING)
     {
-      printf("Not a finished writing message. Message of type: ");
-      printf("%d\n",m_recieve->type);
-      printf("Message from %i \n", m_recieve->person_id);
       message_receive(buf, 4096, QUEUE_FILE);
       m_recieve = (struct lift_msg *) buf;
     }
-    printf("Received a finished writing message from %i\n", persons_done);
-
   }
 
-  printf("Should kill \n");
+  // Kill all remaining processes and cleanup
   int i;
-  kill(uidraw_pid, SIGINT);
-  kill(lift_pid, SIGINT);
-  kill(liftmove_pid, SIGINT);
   for(i=0; i < MAX_N_PERSONS; i++){
     kill(person_pid[i], SIGINT);
   }
+
   exit(0);
 
 }
@@ -364,8 +369,6 @@ int main(int argc, char **argv)
     lift_process();
   }
 
-  uicommand_process();
-
   uidraw_pid = fork();
   if(!uidraw_pid){
     uidraw_process();
@@ -379,5 +382,6 @@ int main(int argc, char **argv)
     file_process();
   }
 
+  uicommand_process();
   return 0;
 }
