@@ -17,7 +17,7 @@
 #define QUEUE_FIRSTPERSON 10
 #define QUEUE_FILE 2
 
-#define _MAX_ITERATIONS_ 5
+#define MAX_ITERATIONS 5
 
 // These variables keeps track of the process IDs of all processes
 // involved in the application so that they can be killed when the
@@ -185,11 +185,11 @@ static void person_process(int id)
   struct timeval starttime;
   struct timeval endtime;
 
-  long long int timediffs[_MAX_ITERATIONS_];
+  long long int timediffs[MAX_ITERATIONS];
   int counter = 0;
 
   while(1){
-    if ( counter < _MAX_ITERATIONS_) {
+    if ( counter < MAX_ITERATIONS) {
 
       //    Generate a to and from floor
       //    Send a LIFT_TRAVEL message to the lift process
@@ -215,7 +215,7 @@ static void person_process(int id)
     else {
 
       int i;
-      char write_string[40*_MAX_ITERATIONS_];
+      char write_string[40*MAX_ITERATIONS];
       char line[40];
 
       // send request to write
@@ -243,7 +243,7 @@ static void person_process(int id)
       }
 
       // Concat one string so that we write only once to file (one disk access)
-      for (i = 0; i < _MAX_ITERATIONS_; i++) {
+      for (i = 0; i < MAX_ITERATIONS; i++) {
         sprintf(line,"%lli",timediffs[i]);
         strcat(line,"\n");
         strcat(write_string,line);
