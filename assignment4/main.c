@@ -12,7 +12,6 @@
 #include <string.h>
 #include "draw.h"
 
-#define QUEUE_UI 0
 #define QUEUE_LIFT 1
 #define QUEUE_FIRSTPERSON 10
 #define QUEUE_FILE 2
@@ -23,7 +22,6 @@
 // involved in the application so that they can be killed when the
 // exit command is received.
 static pid_t lift_pid;
-static pid_t uidraw_pid;
 static pid_t liftmove_pid;
 static pid_t person_pid[MAX_N_PERSONS];
 static pid_t file_pid;
@@ -284,8 +282,6 @@ void uicommand_process(void)
     person_counter++;
   }
 
-  while (1);
-  
   return;
 
 }
@@ -314,7 +310,6 @@ void file_process(void)
   }
 
   // Kill lift processes
-  kill(uidraw_pid, SIGINT);
   kill(lift_pid, SIGINT);
   kill(liftmove_pid, SIGINT);
 
@@ -347,18 +342,6 @@ void file_process(void)
 
 }
 
-// This process is responsible for drawing the lift. Receives lift_type structures
-// as messages.
-void uidraw_process(void)
-{
-  char msg[1024];
-  si_ui_set_size(670, 700);
-  while(1){
-    message_receive(msg, 1024, QUEUE_UI);
-    lift_type Lift = (lift_type) &msg[0];
-    draw_lift(Lift);
-  }
-}
 
 int main(int argc, char **argv)
 {
@@ -369,19 +352,20 @@ int main(int argc, char **argv)
     lift_process();
   }
 
-  uidraw_pid = fork();
-  if(!uidraw_pid){
-    uidraw_process();
-  }
   liftmove_pid = fork();
   if(!liftmove_pid){
     liftmove_process();
   }
+
   file_pid = fork();
   if(!file_pid){
     file_process();
   }
 
   uicommand_process();
+
+  int returnStatus;
+  waitpid(file_pid, &returnStatus, 0);
+
   return 0;
 }
