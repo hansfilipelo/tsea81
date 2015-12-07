@@ -204,7 +204,7 @@ static void person_process(int id)
             // send request to write
 			m_send.type = REQUEST_TO_WRITE;
             m_send.person_id = id;
-            message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 0);
+            message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
             
             
             message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
@@ -217,8 +217,9 @@ static void person_process(int id)
                 message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
                 m_recieve = (struct lift_msg *) buf;
             }
+            printf("Person %i allowed to write \n", id);
             
-            output_file = fopen("stats.txt", "a");
+            output_file = fopen("stats.txt", "a"); 
             if (output_file == NULL)
             {
                 printf("Error opening file!\n");
@@ -237,10 +238,10 @@ static void person_process(int id)
             // message finished writing to file
             m_send.type = FINISHED_WRITING;
             m_send.person_id = id;
-            message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 0);
+            message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
+            printf("Person %i finished writing \n", id);
             
-            
-			return NULL;
+			return;
 		}
         
         
@@ -265,7 +266,9 @@ void uicommand_process(void)
         person_counter++;
     }
     
-	exit(0);
+    sleep(1);
+    
+	return;
     
 }
 
@@ -295,17 +298,21 @@ void file_process(void)
     for (persons_done = 0; persons_done < MAX_N_PERSONS; persons_done++) {
         m_send.type = OK_TO_WRITE;
         m_send.person_id = persons_done;
-        message_send((char *) &m_send, sizeof(m_send), QUEUE_FIRSTPERSON + persons_done, 0);
+        message_send((char *) &m_send, sizeof(m_send), QUEUE_FIRSTPERSON + persons_done, 1);
         
-        printf("%i \n", persons_done);
+        printf("\nSent allowing message to person %i \n", persons_done);
         
-        message_receive(buf, 4096, QUEUE_FILE);
-        m_recieve = (struct lift_msg *) buf;
-        if(m_recieve->type != FINISHED_WRITING)
+        int len = message_receive(buf, 4096, QUEUE_FILE);
+        
+        while(m_recieve->type != FINISHED_WRITING)
         {
-            printf("Not a finished writing message: ");
+            m_recieve = (struct lift_msg *) buf;
+            printf("Not a finished writing message. Message of type: ");
             printf("%d\n",m_recieve->type);
+            printf("Message from %i \n", m_recieve->person_id);
+            int len = message_receive(buf, 4096, QUEUE_FILE);
         }
+        printf("Received a finished writing message from %i\n", persons_done);
         
     }
     
@@ -342,6 +349,9 @@ int main(int argc, char **argv)
 	if(!lift_pid) {
 		lift_process();
 	}
+    
+    uicommand_process();
+    
 	uidraw_pid = fork();
 	if(!uidraw_pid){
 		uidraw_process();
@@ -354,8 +364,6 @@ int main(int argc, char **argv)
     if(!file_pid){
 		file_process();
 	}
-    
-	uicommand_process();
     
 	return 0;
 }
