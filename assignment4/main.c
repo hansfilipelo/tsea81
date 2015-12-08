@@ -235,7 +235,12 @@ static void person_process(int id)
       // ----------------------------------
       // Assemble data and write
 
-      output_file = fopen("stats.txt", "a");
+      char filename[15];
+      sprintf(filename, "stat_%d", MAX_N_PERSONS);
+      strcat(filename,".txt");
+      output_file = fopen(filename, "a");
+
+
       if (output_file == NULL)
       {
         printf("Error opening file!\n");
