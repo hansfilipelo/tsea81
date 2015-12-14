@@ -74,7 +74,6 @@ void *do_work_task(void *arg)
 struct timespec firsttime;
 void *sample_task(void *arg)
 {
-  printf("%s\n", "Sample task");
   // Set higher priority for this task
   struct sched_param sp;
   sp.sched_priority = 5;

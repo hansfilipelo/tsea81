@@ -74,7 +74,7 @@ void dump_outdata(void)
 	FILE *fp = fopen("output.txt","w");
 	int i, j;
 	printf("Dumping outdata\n");
-	
+
 	for(i=0; i < MAX_ITERATIONS; i++){
 		for(j=0; j < MAX_CHANNELS; j++){
 			fprintf(fp, "%d ", outdata[j][i]);
@@ -98,4 +98,3 @@ void dump_sample_times(void)
         fclose(fp);
 	return;
 }
-
