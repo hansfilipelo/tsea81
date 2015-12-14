@@ -53,7 +53,7 @@ void *do_work_task(void *arg)
 {
   // Set higher priority for this task
   struct sched_param sp;
-  sp.sched_priority = 10;
+  sp.sched_priority = 5;
   if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)){
 		fprintf(stderr,"WARNING: Failed to set do_work_task to real-time priority\n");
 	}
