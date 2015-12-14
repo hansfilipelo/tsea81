@@ -24,6 +24,8 @@
 static int sample_buffer[2][PROCESSING_INTERVAL];
 static pthread_mutex_t buffer_lock[2];
 static sem_t wait_for_sample;
+static pthread_mutex_t done_lock;
+static int done = 0;
 
 // -----------------------------
 
@@ -51,7 +53,7 @@ void *do_work_task(void *arg)
 {
   // Set higher priority for this task
   struct sched_param sp;
-  sp.sched_priority = 5;
+  sp.sched_priority = 10;
   if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)){
 		fprintf(stderr,"WARNING: Failed to set do_work_task to real-time priority\n");
 	}
@@ -59,6 +61,13 @@ void *do_work_task(void *arg)
   int current_buffer = 0;
 
   while(1){
+    pthread_mutex_lock(&done_lock);
+    if (done == 1){
+    	pthread_mutex_unlock(&done_lock);
+        break;
+    }
+    pthread_mutex_unlock(&done_lock);
+
     sem_wait(&wait_for_sample);
 
     pthread_mutex_lock(&buffer_lock[current_buffer]);
@@ -67,6 +76,7 @@ void *do_work_task(void *arg)
 
     current_buffer = !current_buffer;
   }
+  return NULL;
 }
 
 // -----------------------------
@@ -76,7 +86,7 @@ void *sample_task(void *arg)
 {
   // Set higher priority for this task
   struct sched_param sp;
-  sp.sched_priority = 5;
+  sp.sched_priority = 10;
   if(pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)){
     fprintf(stderr,"WARNING: Failed to set sample_task to real-time priority\n");
   }
@@ -110,10 +120,12 @@ void *sample_task(void *arg)
       current.tv_nsec -= 1000000000;
       current.tv_sec++;
     }
-
-
   }
-  exit(0);
+
+  pthread_mutex_lock(&done_lock);
+  done = 1;
+  pthread_mutex_unlock(&done_lock);
+  return NULL;
 }
 
 // -----------------------------
@@ -127,6 +139,7 @@ int main(int argc,char **argv)
   // Init thread safe variables
   pthread_mutex_init(&buffer_lock[0],NULL);
   pthread_mutex_init(&buffer_lock[1],NULL);
+  pthread_mutex_init(&done_lock,NULL);
   sem_init(&wait_for_sample, 0, 0);
 
   clock_gettime(CLOCK_MONOTONIC, &firsttime);
@@ -162,5 +175,6 @@ int main(int argc,char **argv)
   // Dump output data which will be used by the analyze.m script
   dump_outdata();
   dump_sample_times();
+  printf("Data dumped.\n");
   return 0;
 }
