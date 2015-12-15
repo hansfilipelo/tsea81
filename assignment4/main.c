@@ -17,7 +17,7 @@
 #define QUEUE_FIRSTPERSON 10
 #define QUEUE_FILE 2
 
-#define MAX_ITERATIONS 5
+#define MAX_ITERATIONS 10000
 
 // These variables keeps track of the process IDs of all processes
 // involved in the application so that they can be killed when the
