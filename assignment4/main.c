@@ -10,7 +10,7 @@
 #include "si_ui.h"
 #include "messages.h"
 #include <string.h>
-#include "draw.h"
+//#include "draw.h"
 #include <sys/wait.h>
 
 #define QUEUE_LIFT 1
@@ -84,11 +84,12 @@ static void lift_process(void)
 {
   lift_type Lift;
   Lift = lift_create();
+  int i;
   int change_direction, next_floor;
+  person_data_type temp_person;
 
   char msgbuf[4096];
   while(1){
-    int i;
     struct lift_msg reply;
     struct lift_msg *m;
     int len = message_receive(msgbuf, 4096, QUEUE_LIFT); // Wait for a message
@@ -118,25 +119,23 @@ static void lift_process(void)
         }
       }
 
-      for(i = 0; i < MAX_N_PERSONS; i++)
+      for(i = 0; i < MAX_N_PASSENGERS; i++)
       {
         //    Check if passengers want to enter elevator
-        if(Lift->persons_to_enter[Lift->floor][i].id != NO_ID && n_passengers_in_lift(Lift) < MAX_N_PASSENGERS)
+        if(!empty_queue(&Lift->persons_to_enter[Lift->floor]) && n_passengers_in_lift(Lift) < MAX_N_PASSENGERS )
         {
+
+          temp_person = pop_from_queue(&Lift->persons_to_enter[Lift->floor]);
           //        Remove the passenger from the floor and into the elevator
           int j;
           for(j = 0; j < MAX_N_PASSENGERS; j++)
           {
             if (Lift->passengers_in_lift[j].id == NO_ID) {
-              Lift->passengers_in_lift[j].id = Lift->persons_to_enter[Lift->floor][i].id;
-              Lift->passengers_in_lift[j].to_floor = Lift->persons_to_enter[Lift->floor][i].to_floor;
+              Lift->passengers_in_lift[j].id = temp_person.id;
+              Lift->passengers_in_lift[j].to_floor = temp_person.to_floor;
               break;
             }
           }
-
-          Lift->persons_to_enter[Lift->floor][i].id = NO_ID;
-          Lift->persons_to_enter[Lift->floor][i].to_floor = NO_FLOOR;
-
         }
       }
 
@@ -148,14 +147,9 @@ static void lift_process(void)
       break;
       case LIFT_TRAVEL:
       //    Update the Lift structure so that the person with the given ID  is now present on the floor
-      for(i = 0; i < MAX_N_PERSONS; i++)
-      {
-        if (Lift->persons_to_enter[m->from_floor][i].id == NO_ID) {
-          Lift->persons_to_enter[m->from_floor][i].id = m->person_id;
-          Lift->persons_to_enter[m->from_floor][i].to_floor = m->to_floor;
-          break;
-        }
-      }
+      temp_person.id = m->person_id;
+      temp_person.to_floor = m->to_floor;
+      add_to_queue(&Lift->persons_to_enter[m->from_floor], &temp_person);
       break;
 
       case LIFT_TRAVEL_DONE:
