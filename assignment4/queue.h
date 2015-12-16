@@ -1,6 +1,7 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 #include <sys/time.h>
+#include <stdio.h>
 
 /* maximum number of persons in the lift system */
 #define MAX_N_PERSONS 10
