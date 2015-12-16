@@ -17,6 +17,8 @@
 #define NO_ID -1
 #define NO_FLOOR -1
 
+person_data_type NO_PERSON;
+
 /* fig_begin lift_mon_type */
 /* definition of monitor data type for lift */
 

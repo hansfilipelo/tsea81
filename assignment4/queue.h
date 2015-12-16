@@ -1,17 +1,29 @@
 #ifndef QUEUE_H
 #define QUEUE_H
+#include <sys/time.h>
 
 /* maximum number of persons in the lift system */
 #define MAX_N_PERSONS 10
+#define NR_OF_JOURNEYS 5
 
 /* fig_begin person_data_type */
 /* data structure for person information */
 typedef struct
 {
-    /* identity */
-    int id;
-    /* destination floor */
-    int to_floor;
+  /* identity */
+  int id;
+  /* destination floor */
+  int to_floor[NR_OF_JOURNEYS];
+  int from_floor[NR_OF_JOURNEYS];
+
+  struct timeval starttime;
+  struct timeval endtime;
+
+  long long int timediffs[NR_OF_JOURNEYS];
+
+  // Counter which tells us which "journey" we are traveling
+  int journey;
+
 } person_data_type;
 /* fig_end person_data_type */
 

@@ -47,8 +47,16 @@ lift_type lift_create(void)
     /* initialise passenger information */
     for (i = 0; i < MAX_N_PASSENGERS; i++)
     {
-        lift->passengers_in_lift[i].id = NO_ID;
-        lift->passengers_in_lift[i].to_floor = NO_FLOOR;
+        lift->passengers_in_lift[i] = NO_PERSON;
+    }
+
+    // Initiate an empty person
+    NO_PERSON.id = NO_ID;
+    for(i = 0; i < NR_OF_JOURNEYS; i++)
+    {
+      NO_PERSON.to_floor[i] = NO_FLOOR;
+      NO_PERSON.from_floor[i] = NO_FLOOR;
+      NO_PERSON.timediffs[i] = 0;
     }
 
     return lift;
