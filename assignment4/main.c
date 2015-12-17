@@ -178,6 +178,7 @@ static void lift_process(void)
         temp_person.from_floor[i] = m->from_floor[i];
       }
       temp_person.journey = 0;
+      gettimeofday(&temp_person.starttime, NULL);
       add_to_queue(&Lift->persons_to_enter[m->from_floor[0]], &temp_person);
       break;
 
