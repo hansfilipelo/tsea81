@@ -5,7 +5,7 @@
 
 /* maximum number of persons in the lift system */
 #define MAX_N_PERSONS 10
-#define NR_OF_JOURNEYS 5
+#define NR_OF_JOURNEYS 100
 
 /* fig_begin person_data_type */
 /* data structure for person information */

@@ -88,7 +88,7 @@ static void lift_process(void)
   int j;
   int change_direction, next_floor;
   person_data_type temp_person;
-  printf("%lu\n", sizeof(struct lift_msg));
+  printf("Size of message: %lu\n", sizeof(struct lift_msg));
 
   char msgbuf[4096];
   while(1){
