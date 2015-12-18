@@ -39,21 +39,24 @@ lift_type lift_create(void)
     /* the lift is not moving */
     lift->moving = 0;
 
-    /* initialise person information */
-    for (floor = 0; floor < N_FLOORS; floor++)
+    for(i = 0; i < N_FLOORS; i++)
     {
-        for (i = 0; i < MAX_N_PERSONS; i++)
-        {
-            lift->persons_to_enter[floor][i].id = NO_ID;
-            lift->persons_to_enter[floor][i].to_floor = NO_FLOOR;
-        }
+      queue_init(&lift->persons_to_enter[i]);
     }
 
+    // Initiate an empty person
+    NO_PERSON.id = NO_ID;
+    for(i = 0; i < NR_OF_JOURNEYS; i++)
+    {
+      NO_PERSON.to_floor[i] = NO_FLOOR;
+      NO_PERSON.from_floor[i] = NO_FLOOR;
+      NO_PERSON.timediffs[i] = 0;
+    }
+    
     /* initialise passenger information */
     for (i = 0; i < MAX_N_PASSENGERS; i++)
     {
-        lift->passengers_in_lift[i].id = NO_ID;
-        lift->passengers_in_lift[i].to_floor = NO_FLOOR;
+        lift->passengers_in_lift[i] = NO_PERSON;
     }
 
     return lift;

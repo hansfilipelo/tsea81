@@ -94,7 +94,7 @@ static void *passenger_thread(void *idptr)
 	struct timeval starttime;
 	struct timeval endtime;
 
-	long long int* timediffs[_MAX_ITERATIONS_];
+	long long int timediffs[_MAX_ITERATIONS_];
 	int counter = 0;
 
 	while(1){
@@ -126,7 +126,11 @@ static void *passenger_thread(void *idptr)
 			char line[40];
 			pthread_mutex_lock(&file_mutex);
 
-			output_file = fopen("stats.txt", "a");
+			char filename[15];
+      sprintf(filename, "stat_%d", MAX_N_PERSONS);
+      strcat(filename,".txt");
+      output_file = fopen(filename, "a");
+
 			if (output_file == NULL)
 			{
 					printf("Error opening file!\n");
@@ -134,7 +138,7 @@ static void *passenger_thread(void *idptr)
 			}
 
 			for (i = 0; i < _MAX_ITERATIONS_; i++) {
-				sprintf(line,"%i",timediffs[i]);
+				sprintf(line,"%lli",timediffs[i]);
 				strcat(line,"\n");
 				strcat(write_string,line);
 				memset(line, 0,sizeof(line[0])*40);

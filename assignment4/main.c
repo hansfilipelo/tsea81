@@ -10,14 +10,14 @@
 #include "si_ui.h"
 #include "messages.h"
 #include <string.h>
-#include "draw.h"
+//#include "draw.h"
 #include <sys/wait.h>
 
 #define QUEUE_LIFT 1
 #define QUEUE_FIRSTPERSON 10
 #define QUEUE_FILE 2
 
-#define _MAX_ITERATIONS_ 5
+#define MAX_ITERATIONS 10000 // Need to be a multiple of NR_OF_JOURNEYS
 
 // These variables keeps track of the process IDs of all processes
 // involved in the application so that they can be killed when the
@@ -47,8 +47,8 @@ typedef enum {LIFT_TRAVEL, // A travel message is sent to the list process when 
 struct lift_msg{
   lift_msg_type type;  // Type of message
   int person_id;       // Specifies the person
-  int from_floor;      // Specify source and destion for the LIFT_TRAVEL message.
-  int to_floor;
+  int from_floor[NR_OF_JOURNEYS];      // Specify source and destion for the LIFT_TRAVEL message.
+  int to_floor[NR_OF_JOURNEYS];
 };
 
 
@@ -84,11 +84,14 @@ static void lift_process(void)
 {
   lift_type Lift;
   Lift = lift_create();
+  int i;
+  int j;
   int change_direction, next_floor;
+  person_data_type temp_person;
+  printf("Size of message: %lu\n", sizeof(struct lift_msg));
 
   char msgbuf[4096];
   while(1){
-    int i;
     struct lift_msg reply;
     struct lift_msg *m;
     int len = message_receive(msgbuf, 4096, QUEUE_LIFT); // Wait for a message
@@ -104,39 +107,58 @@ static void lift_process(void)
       //    Check if passengers want to leave elevator
       for(i = 0; i < MAX_N_PASSENGERS; i++)
       {
-        if(Lift->passengers_in_lift[i].to_floor == Lift->floor)
+        if(Lift->passengers_in_lift[i].to_floor[Lift->passengers_in_lift[i].journey] == Lift->floor)
         {
-          //        Send a LIFT_TRAVEL_DONE for each passenger that leaves
-          //        the elevator
-          reply.type = LIFT_TRAVEL_DONE;
-          reply.person_id = Lift->passengers_in_lift[i].id;
-          message_send((char *) &reply, sizeof(reply), QUEUE_FIRSTPERSON + reply.person_id, 0);
+          // Save RTT of journey
+          gettimeofday(&Lift->passengers_in_lift[i].endtime, NULL);
+          Lift->passengers_in_lift[i].timediffs[Lift->passengers_in_lift[i].journey] = (Lift->passengers_in_lift[i].endtime.tv_sec*1000000ULL + Lift->passengers_in_lift[i].endtime.tv_usec) - (Lift->passengers_in_lift[i].starttime.tv_sec*1000000ULL + Lift->passengers_in_lift[i].starttime.tv_usec);
+
+          if(Lift->passengers_in_lift[i].journey == NR_OF_JOURNEYS - 1)
+          {
+            //        Send a LIFT_TRAVEL_DONE for each passenger that leaves elevator and has
+            //        finished all journeys.
+            reply.type = LIFT_TRAVEL_DONE;
+            reply.person_id = Lift->passengers_in_lift[i].id;
+
+            for(j = 0; j < NR_OF_JOURNEYS; j++)
+            {
+              reply.to_floor[j] = (int)Lift->passengers_in_lift[i].timediffs[j];
+            }
+            message_send((char *) &reply, sizeof(reply), QUEUE_FIRSTPERSON + reply.person_id, 0);
+          }
+          else
+          {
+            // Else continue with next journey
+            temp_person = Lift->passengers_in_lift[i];
+            temp_person.journey++;
+            gettimeofday(&temp_person.starttime, NULL);
+            add_to_queue(&Lift->persons_to_enter[temp_person.from_floor[temp_person.journey]], &temp_person);
+          }
 
           //        Remove the passenger from the elevator
-          Lift->passengers_in_lift[i].id = NO_ID;
-          Lift->passengers_in_lift[i].to_floor = NO_FLOOR;
+          Lift->passengers_in_lift[i] = NO_PERSON;
         }
       }
 
-      for(i = 0; i < MAX_N_PERSONS; i++)
+      for(i = 0; i < MAX_N_PASSENGERS; i++)
       {
         //    Check if passengers want to enter elevator
-        if(Lift->persons_to_enter[Lift->floor][i].id != NO_ID && n_passengers_in_lift(Lift) < MAX_N_PASSENGERS)
+        if( !empty_queue(&Lift->persons_to_enter[Lift->floor]) && n_passengers_in_lift(Lift) < MAX_N_PASSENGERS )
         {
+
+          temp_person = pop_from_queue(&Lift->persons_to_enter[Lift->floor]);
           //        Remove the passenger from the floor and into the elevator
           int j;
           for(j = 0; j < MAX_N_PASSENGERS; j++)
           {
             if (Lift->passengers_in_lift[j].id == NO_ID) {
-              Lift->passengers_in_lift[j].id = Lift->persons_to_enter[Lift->floor][i].id;
-              Lift->passengers_in_lift[j].to_floor = Lift->persons_to_enter[Lift->floor][i].to_floor;
+              Lift->passengers_in_lift[j] = temp_person;
               break;
             }
           }
-
-          Lift->persons_to_enter[Lift->floor][i].id = NO_ID;
-          Lift->persons_to_enter[Lift->floor][i].to_floor = NO_FLOOR;
-
+        }
+        else{
+          break;
         }
       }
 
@@ -148,14 +170,16 @@ static void lift_process(void)
       break;
       case LIFT_TRAVEL:
       //    Update the Lift structure so that the person with the given ID  is now present on the floor
-      for(i = 0; i < MAX_N_PERSONS; i++)
+      temp_person.id = m->person_id;
+
+      for(i = 0; i < NR_OF_JOURNEYS; i++)
       {
-        if (Lift->persons_to_enter[m->from_floor][i].id == NO_ID) {
-          Lift->persons_to_enter[m->from_floor][i].id = m->person_id;
-          Lift->persons_to_enter[m->from_floor][i].to_floor = m->to_floor;
-          break;
-        }
+        temp_person.to_floor[i] = m->to_floor[i];
+        temp_person.from_floor[i] = m->from_floor[i];
       }
+      temp_person.journey = 0;
+      gettimeofday(&temp_person.starttime, NULL);
+      add_to_queue(&Lift->persons_to_enter[m->from_floor[0]], &temp_person);
       break;
 
       case LIFT_TRAVEL_DONE:
@@ -182,40 +206,48 @@ static void person_process(int id)
   struct lift_msg *m_recieve;
   struct lift_msg m_send;
 
-  struct timeval starttime;
-  struct timeval endtime;
-
-  long long int timediffs[_MAX_ITERATIONS_];
+  long long int timediffs[MAX_ITERATIONS];
   int counter = 0;
 
   while(1){
-    if ( counter < _MAX_ITERATIONS_) {
+    if ( counter < MAX_ITERATIONS ) {
 
       //    Generate a to and from floor
       //    Send a LIFT_TRAVEL message to the lift process
       m_send.type = LIFT_TRAVEL;
       m_send.person_id = id;
-      m_send.from_floor = get_random_value(id, N_FLOORS - 1);
-      m_send.to_floor = get_random_value(id, N_FLOORS - 1);
+      int i;
+      for(i = 0; i < NR_OF_JOURNEYS; i++)
+      {
+        m_send.from_floor[i] = get_random_value(id, N_FLOORS - 1);
+        m_send.to_floor[i] = get_random_value(id, N_FLOORS - 1);
+        while(m_send.from_floor[i] == m_send.to_floor[i])
+        {
+          m_send.to_floor[i] = get_random_value(id, N_FLOORS - 1);
+        }
+      }
+
       message_send((char *) &m_send, sizeof(m_send), QUEUE_LIFT, 0);
 
-      gettimeofday(&starttime, NULL);
+
       //    Wait for a LIFT_TRAVEL_DONE message
       int len = message_receive(buf, 4096, QUEUE_FIRSTPERSON + id); // Wait for a message
       if(len < sizeof(struct lift_msg)){
         fprintf(stderr, "Message too short\n");
         continue;
       }
+      m_recieve = (struct lift_msg *) buf;
 
-      gettimeofday(&endtime, NULL);
-
-      timediffs[counter] = (endtime.tv_sec*1000000ULL + endtime.tv_usec) - (starttime.tv_sec*1000000ULL + starttime.tv_usec);
-      counter++;
+      for(i = 0; i < NR_OF_JOURNEYS; i++)
+      {
+        timediffs[counter++] = m_recieve->to_floor[i]; // Message size optimization
+            // Using to_floor array to send back timediffs
+      }
     }
     else {
 
       int i;
-      char write_string[40*_MAX_ITERATIONS_];
+      char write_string[40*MAX_ITERATIONS];
       char line[40];
 
       // send request to write
@@ -235,7 +267,12 @@ static void person_process(int id)
       // ----------------------------------
       // Assemble data and write
 
-      output_file = fopen("stats.txt", "a");
+      char filename[15];
+      sprintf(filename, "stat_%d", MAX_N_PERSONS);
+      strcat(filename,".txt");
+      output_file = fopen(filename, "a");
+
+
       if (output_file == NULL)
       {
         printf("Error opening file!\n");
@@ -243,7 +280,7 @@ static void person_process(int id)
       }
 
       // Concat one string so that we write only once to file (one disk access)
-      for (i = 0; i < _MAX_ITERATIONS_; i++) {
+      for (i = 0; i < MAX_ITERATIONS; i++) {
         sprintf(line,"%lli",timediffs[i]);
         strcat(line,"\n");
         strcat(write_string,line);

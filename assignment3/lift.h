@@ -9,7 +9,7 @@
 #define N_FLOORS 5
 
 /* maximum number of persons in the lift system */
-#define MAX_N_PERSONS 300
+#define MAX_N_PERSONS 10
 
 /* maximum number of passengers in lift */
 #define MAX_N_PASSENGERS 5
@@ -56,7 +56,9 @@ typedef struct
     pthread_mutex_t mutex;
 
     /* condition variable, to indicate that something has happend */
-    pthread_cond_t change;
+    pthread_cond_t change_floor[N_FLOORS];
+    pthread_cond_t lift_change;
+    pthread_cond_t passenger_change;
 
 } lift_data_type;
 
