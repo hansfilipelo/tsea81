@@ -250,25 +250,11 @@ static void person_process(int id)
       char write_string[40*MAX_ITERATIONS];
       char line[40];
 
-      // send request to write
-      m_send.type = REQUEST_TO_WRITE;
-      m_send.person_id = id;
-      message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
-
-
-      // wait for ok to write ------------
-      message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
-      m_recieve = (struct lift_msg *) buf;
-      while(m_recieve->type != OK_TO_WRITE)
-      {
-        message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
-        m_recieve = (struct lift_msg *) buf;
-      }
       // ----------------------------------
       // Assemble data and write
 
-      char filename[15];
-      sprintf(filename, "stat_%d", MAX_N_PERSONS);
+      char filename[16];
+      sprintf(filename, "stat_%d_%d", MAX_N_PERSONS, id);
       strcat(filename,".txt");
       output_file = fopen(filename, "a");
 
@@ -291,13 +277,9 @@ static void person_process(int id)
       fclose(output_file);
 
       // ---------------------------------
-
-      // message finished writing to file thread
-      m_send.type = FINISHED_WRITING;
-      m_send.person_id = id;
-      message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
-
-      return;
+      printf("Person with id %i finished writing. \n", id);
+      
+	while(1);
     }
 
 
@@ -325,65 +307,6 @@ void uicommand_process(void)
 
 }
 
-void file_process(void)
-{
-  char buf[4096];
-  struct lift_msg *m_recieve;
-  struct lift_msg m_send;
-
-  int persons_to_write = 0;
-  int persons_done;
-
-  // --------------------------
-  // wait for REQUEST_TO_WRITE message from all persons
-  while(persons_to_write < MAX_N_PERSONS)
-  {
-    message_receive(buf, 4096, QUEUE_FILE);
-    m_recieve = (struct lift_msg *) buf;
-
-    if(m_recieve->type != REQUEST_TO_WRITE)
-    {
-      printf("Not a request to write message \n");
-    }
-    persons_to_write++;
-  }
-
-  // Kill lift processes since there's no passengers travelling
-  kill(lift_pid, SIGINT);
-  kill(liftmove_pid, SIGINT);
-
-  // --------------------------
-  // send ok to write and wait for finished response to each person
-  for (persons_done = 0; persons_done < MAX_N_PERSONS; persons_done++) {
-    // Assemble message
-    m_send.type = OK_TO_WRITE;
-    m_send.person_id = persons_done;
-    message_send((char *) &m_send, sizeof(m_send), QUEUE_FIRSTPERSON + persons_done, 1);
-
-    // Wait here for a FINISHED_WRITING-message
-    message_receive(buf, 4096, QUEUE_FILE);
-    m_recieve = (struct lift_msg *) buf;
-
-    while(m_recieve->type != FINISHED_WRITING)
-    {
-      message_receive(buf, 4096, QUEUE_FILE);
-      m_recieve = (struct lift_msg *) buf;
-    }
-
-    printf("Person %i finished writing \n", persons_done);
-  }
-
-  // Kill all remaining processes and cleanup
-  int i;
-  for(i=0; i < MAX_N_PERSONS; i++){
-    kill(person_pid[i], SIGINT);
-  }
-
-  exit(0);
-
-}
-
-
 int main(int argc, char **argv)
 {
   message_init();
@@ -398,16 +321,11 @@ int main(int argc, char **argv)
     liftmove_process();
   }
 
-  file_pid = fork();
-  if(!file_pid){
-    file_process();
-  }
-
   uicommand_process();
 
   // Wait for filepid to exit
   int returnStatus;
-  waitpid(file_pid, &returnStatus, 0);
+  waitpid(lift_pid, &returnStatus, 0);
 
   return 0;
 }
