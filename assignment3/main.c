@@ -11,9 +11,9 @@
 #include <sys/time.h>
 
 #define _MAX_ITERATIONS_ 10000
-FILE *output_file;
-pthread_mutex_t file_mutex;
-pthread_barrier_t thread_done_barrier;
+//FILE *output_file;
+//pthread_mutex_t file_mutex;
+//pthread_barrier_t thread_done_barrier;
 
 // Counter which counts number of threads ready
 int threads_ready = 0;
@@ -78,6 +78,7 @@ static void *lift_thread(void *unused)
 		}
 		pthread_mutex_unlock(&counter_mutex);
 	}
+	printf("Lift ready. \n");
 	exit(0);
 }
 
@@ -86,7 +87,7 @@ static void *passenger_thread(void *idptr)
 	// Code that reads the passenger ID from the idptr pointer
 	// (due to the way pthread_create works we need to first cast
 	// the void pointer to an int pointer).
-
+	FILE *output_file;
 	int *tmp = (int *) idptr;
 	int id = *tmp;
 	sem_post(&id_wait);
@@ -119,17 +120,17 @@ static void *passenger_thread(void *idptr)
 		}
 		else {
 
-			pthread_barrier_wait(&thread_done_barrier);
+			//pthread_barrier_wait(&thread_done_barrier);
 
 			int i;
 			char write_string[40*_MAX_ITERATIONS_];
 			char line[40];
-			pthread_mutex_lock(&file_mutex);
+			//pthread_mutex_lock(&file_mutex);
 
-			char filename[15];
-      sprintf(filename, "stat_%d", MAX_N_PERSONS);
-      strcat(filename,".txt");
-      output_file = fopen(filename, "a");
+			char filename[16];
+      			sprintf(filename, "stat_%d_%d", MAX_N_PERSONS, id);
+      			strcat(filename,".txt");
+      			output_file = fopen(filename, "a");
 
 			if (output_file == NULL)
 			{
@@ -146,13 +147,14 @@ static void *passenger_thread(void *idptr)
 			fputs(write_string,output_file);
 			fclose(output_file);
 
-			pthread_mutex_unlock(&file_mutex);
+			//pthread_mutex_unlock(&file_mutex);
 
 			// We're ready - give signal
 			pthread_mutex_lock(&counter_mutex);
 			threads_ready += 1;
 			pthread_mutex_unlock(&counter_mutex);
-
+			
+			printf("Person with id %i ready. \n", id);
 			return 0;
 		}
 	}
@@ -184,8 +186,8 @@ static void *user_thread(void *unused)
 int main(int argc, char **argv)
 {
 	// Mutex output file
-	pthread_mutex_init(&file_mutex,NULL);
-	pthread_barrier_init(&thread_done_barrier,NULL,MAX_N_PERSONS);
+	//pthread_mutex_init(&file_mutex,NULL);
+	//pthread_barrier_init(&thread_done_barrier,NULL,MAX_N_PERSONS);
 	pthread_mutex_init(&counter_mutex,NULL);
 	// output stop
 
