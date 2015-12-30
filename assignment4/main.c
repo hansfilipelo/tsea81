@@ -73,6 +73,7 @@ static void liftmove_process(void)
 
 static void lift_process(void)
 {
+<<<<<<< Updated upstream
     lift_type Lift;
 	Lift = lift_create();
 	int change_direction, next_floor;
@@ -151,6 +152,131 @@ static void lift_process(void)
 		}
 	}
 	return;
+=======
+  lift_type Lift;
+  Lift = lift_create();
+  int i;
+  int j;
+  int change_direction, next_floor;
+  person_data_type temp_person;
+  printf("%lu\n", sizeof(struct lift_msg));
+
+  char msgbuf[4096];
+  while(1){
+    struct lift_msg reply;
+    struct lift_msg *m;
+    int len = message_receive(msgbuf, 4096, QUEUE_LIFT); // Wait for a message
+    if(len < sizeof(struct lift_msg)){
+      fprintf(stderr, "Message too short\n");
+      continue;
+    }
+
+    m = (struct lift_msg *) msgbuf;
+    switch(m->type){
+      case LIFT_MOVE:
+      Lift->floor++;
+      //    Check if passengers want to leave elevator
+      for(i = 0; i < MAX_N_PASSENGERS; i++)
+      {
+        //printf("Lift->passengers_in_lift[i].to_floor[0]: %i \n", Lift->passengers_in_lift[i].to_floor[0]);
+        if(Lift->passengers_in_lift[i].to_floor[Lift->passengers_in_lift[i].journey] == Lift->floor)
+        {
+          printf("Found people to leave lift. \n");
+          // Save RTT of journey
+          gettimeofday(&Lift->passengers_in_lift[i].endtime, NULL);
+          Lift->passengers_in_lift[i].timediffs[Lift->passengers_in_lift[i].journey] = (Lift->passengers_in_lift[i].endtime.tv_sec*1000000ULL + Lift->passengers_in_lift[i].endtime.tv_usec) - (Lift->passengers_in_lift[i].starttime.tv_sec*1000000ULL + Lift->passengers_in_lift[i].starttime.tv_usec);
+
+          if(Lift->passengers_in_lift[i].journey == NR_OF_JOURNEYS - 1)
+          {
+            //        Send a LIFT_TRAVEL_DONE for each passenger that leaves elevator and has
+            //        finished all journeys.
+            reply.type = LIFT_TRAVEL_DONE;
+            reply.person_id = Lift->passengers_in_lift[i].id;
+
+            for(j = 0; j < NR_OF_JOURNEYS; j++)
+            {
+              reply.to_floor[j] = (int)Lift->passengers_in_lift[i].timediffs[j];
+            }
+            printf("Sending TRAVEL_DONE\n");
+            message_send((char *) &reply, sizeof(reply), QUEUE_FIRSTPERSON + reply.person_id, 0);
+          }
+          else
+          {
+            // Else continue with next journey
+            temp_person = Lift->passengers_in_lift[i];
+            temp_person.journey++;
+            gettimeofday(&temp_person.starttime, NULL);
+            add_to_queue(&Lift->persons_to_enter[temp_person.from_floor[temp_person.journey]], &temp_person);
+          }
+
+          //        Remove the passenger from the elevator
+          Lift->passengers_in_lift[i] = NO_PERSON;
+        }
+      }
+
+      for(i = 0; i < MAX_N_PASSENGERS; i++)
+      {
+
+      //printf("Not empty lift: %i \n", empty_queue(&Lift->persons_to_enter[Lift->floor]) == 1);
+        //printf("Persons in lift: %i \n", n_passengers_in_lift(Lift));
+        //printf("ID of first in lift: %i \n", Lift->passengers_in_lift[0].id);
+        //    Check if passengers want to enter elevator
+        if( empty_queue(&Lift->persons_to_enter[Lift->floor]) == 0 && n_passengers_in_lift(Lift) < MAX_N_PASSENGERS )
+        {
+          printf("Found people to enter lift. \n");
+
+          temp_person = pop_from_queue(&Lift->persons_to_enter[Lift->floor]);
+          //        Remove the passenger from the floor and into the elevator
+
+          for(j = 0; j < MAX_N_PASSENGERS; j++)
+          {
+            if (Lift->passengers_in_lift[j].id == NO_ID) {
+              Lift->passengers_in_lift[j] = temp_person;
+              break;
+            }
+          }
+        }
+        else{
+          break;
+        }
+      }
+
+      //    Move the lift
+      lift_next_floor(Lift, &next_floor, &change_direction);
+      lift_move(Lift, next_floor, change_direction);
+      change_direction = 0;
+
+      break;
+      case LIFT_TRAVEL:
+      printf("RECEIVE LIFT_TRAVEL. \n");
+      //    Update the Lift structure so that the person with the given ID  is now present on the floor
+      temp_person.id = m->person_id;
+
+      for(i = 0; i < NR_OF_JOURNEYS; i++)
+      {
+        temp_person.to_floor[i] = m->to_floor[i];
+        temp_person.from_floor[i] = m->from_floor[i];
+      }
+      temp_person.journey = 0;
+      add_to_queue(&Lift->persons_to_enter[m->from_floor[0]], &temp_person);
+      break;
+
+      case LIFT_TRAVEL_DONE:
+      printf("Undefined state!\n");
+      break;
+      case REQUEST_TO_WRITE:
+      printf("Undefined state!\n");
+      break;
+      case OK_TO_WRITE:
+      printf("Undefined state!\n");
+      break;
+      case FINISHED_WRITING:
+      printf("Undefined state!\n");
+      break;
+    }
+  }
+  return;
+>>>>>>> Stashed changes
 }
 
 static void person_process(int id)
@@ -178,10 +304,90 @@ static void person_process(int id)
         if (m.type != LIFT_TRAVEL_DONE) {
             fprintf(stderr, "Not a LIFT_TRAVEL_DONE message\n");
         }
+<<<<<<< Updated upstream
         
 		//    Wait a little while
         sleep(5);
 	}
+=======
+      }
+      printf("Sending LIFT_TRAVEL\n");
+      message_send((char *) &m_send, sizeof(m_send), QUEUE_LIFT, 0);
+
+
+      //    Wait for a LIFT_TRAVEL_DONE message
+      int len = message_receive(buf, 4096, QUEUE_FIRSTPERSON + id); // Wait for a message
+      if(len < sizeof(struct lift_msg)){
+        fprintf(stderr, "Message too short\n");
+        continue;
+      }
+      m_recieve = (struct lift_msg *) buf;
+
+      for(i = 0; i < NR_OF_JOURNEYS; i++)
+      {
+        timediffs[counter++] = m_recieve->to_floor[i]; // Message size optimization
+            // Using to_floor array to send back timediffs
+      }
+    }
+    else {
+
+      int i;
+      char write_string[40*MAX_ITERATIONS];
+      char line[40];
+
+      // send request to write
+      m_send.type = REQUEST_TO_WRITE;
+      m_send.person_id = id;
+      message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
+
+
+      // wait for ok to write ------------
+      message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
+      m_recieve = (struct lift_msg *) buf;
+      while(m_recieve->type != OK_TO_WRITE)
+      {
+        message_receive(buf, 4096, QUEUE_FIRSTPERSON + id);
+        m_recieve = (struct lift_msg *) buf;
+      }
+      // ----------------------------------
+      // Assemble data and write
+
+      char filename[15];
+      sprintf(filename, "stat_%d", MAX_N_PERSONS);
+      strcat(filename,".txt");
+      output_file = fopen(filename, "a");
+
+
+      if (output_file == NULL)
+      {
+        printf("Error opening file!\n");
+        exit(1);
+      }
+
+      // Concat one string so that we write only once to file (one disk access)
+      for (i = 0; i < MAX_ITERATIONS; i++) {
+        sprintf(line,"%lli",timediffs[i]);
+        strcat(line,"\n");
+        strcat(write_string,line);
+        memset(line, 0,sizeof(line[0])*40);
+      }
+      // Write
+      fputs(write_string,output_file);
+      fclose(output_file);
+
+      // ---------------------------------
+
+      // message finished writing to file thread
+      m_send.type = FINISHED_WRITING;
+      m_send.person_id = id;
+      message_send((char *) &m_send, sizeof(m_send), QUEUE_FILE, 1);
+
+      return;
+    }
+
+
+  }
+>>>>>>> Stashed changes
 }
 
 // This is the final process called by main()
